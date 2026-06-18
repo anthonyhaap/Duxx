@@ -2,12 +2,15 @@
 
 An interactive **3D deck designer** modeled on the
 [Kadenz Aluminum Railings Deck Visualizer](https://kadenzrailing.com/visualizer/).
-Like the real tool, it's a two-step flow in a studio grid environment:
+Like the real tool, it's a multi-step flow in a studio grid environment:
 
-1. **Shape** — pick a deck footprint (Square, Notched, L-Shaped, T-Shaped), set the
-   **height** with the slider, choose a decking color, and **add a second level**.
-2. **Railing** — wrap the deck perimeter with a Kadenz aluminum railing and configure
-   the line, infill, finish, top rail and posts.
+1. **Shape** — pick a deck footprint, drag-resize it, set height, decking color/direction/fascia, add levels
+2. **Railing** — wrap the perimeter; line, infill, finish, top rail, post style & caps; click edges to open sides; gate
+3. **Stairs** — add a staircase (move it around the perimeter), optional landing **platform**, step-board & riser colors
+4. **Walls** — add an attached/detached house wall with cladding (incl. brick), **doors** and **windows**
+5. **Furniture** — drop a table & chairs, lounge, planter, grill or umbrella onto the deck
+
+Each step **adds to** the previous, so by the end you see the whole build at once.
 
 Everything is **built procedurally in Three.js** from your selections — drag to orbit,
 scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
@@ -22,7 +25,9 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 - **Post style** — Post-to-Post vs Over-the-Post (continuous top rail over the posts)
 - **Post caps** — Standard, Ornamental (pyramid), Ball, Halo (LV) and Solar — the lighted caps glow (emissive)
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
-- **Stairs** — add a staircase (treads, risers, stringers) descending from any deck edge; move it around the perimeter
+- **Stairs** — staircase (treads, risers, stringers) descending from any deck edge; move it around the perimeter; optional landing **platform**; step-board & riser color pickers
+- **Walls** — attached/detached house wall with cladding (Red/Blue/Green/White/Brown/Yellow/Gray/Belmont brick) and adjustable **door**/**window** counts
+- **Furniture** — table & chairs, lounge, planter, grill, umbrella placed on the deck
 - **Per-edge railing toggle** — **click an edge in the 3D view** to add/remove railing on just that side (e.g. leave the house side open)
 - **Gate** — drop an openable gate section (frame + handle) into the railing, at the stairs/front edge
 - **Levels** — add a stacked second tier that rests on the base deck

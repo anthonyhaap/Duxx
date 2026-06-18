@@ -30,13 +30,10 @@
   <main class="app">
     <!-- Configurator / step panel -->
     <aside class="panel">
-      <div class="stepper" id="stepper">
-        <button class="step active" data-step="shape"><b>1</b> Shape</button>
-        <button class="step" data-step="railing"><b>2</b> Railing</button>
-      </div>
+      <div class="stepper" id="stepper"></div>
 
       <!-- STEP 1: SHAPE -->
-      <div class="step-pane" id="stepShape">
+      <div class="step-pane" id="stepShape" data-step="shape">
         <h3>Deck Shape</h3>
         <div class="shape-grid" id="shapeGrid"></div>
 
@@ -62,19 +59,12 @@
           <button class="ghost-btn" id="addLevelBtn">＋ Add a level</button>
           <button class="ghost-btn" id="removeLevelBtn" hidden>－ Remove level</button>
         </div>
-
-        <h3>Access</h3>
-        <div class="level-row">
-          <button class="ghost-btn" id="stairsBtn">▦ Add stairs</button>
-          <button class="ghost-btn" id="stairsRotBtn" hidden>↻ Move stairs</button>
-        </div>
         <p class="hint">Drag the <b>gold handles</b> on the deck to resize it, or use the
-           sliders above. Set the height with the slider on the preview; stairs descend from
-           one edge to the ground.</p>
+           sliders above. Set the height with the slider on the preview.</p>
       </div>
 
       <!-- STEP 2: RAILING -->
-      <div class="step-pane" id="stepRailing" hidden>
+      <div class="step-pane" id="stepRailing" data-step="railing" hidden>
         <div class="config-group">
           <h3>Railing Line</h3>
           <div class="options product-options" id="productOptions"></div>
@@ -113,6 +103,47 @@
           <p class="hint">Tip: <b>click any deck edge</b> in the preview to add or remove railing
              on that side — e.g. leave the house side open.</p>
         </div>
+      </div>
+
+      <!-- STEP 3: STAIRS -->
+      <div class="step-pane" id="stepStairs" data-step="stairs" hidden>
+        <h3>Stairs</h3>
+        <div class="level-row">
+          <button class="ghost-btn" id="stairsBtn">▦ Add stairs</button>
+          <button class="ghost-btn" id="stairsRotBtn" hidden>↻ Move stairs</button>
+          <button class="ghost-btn" id="platformBtn" hidden>＋ With platform</button>
+        </div>
+        <h3>Step Boards</h3>
+        <div class="swatches" id="stairBoardOptions"></div>
+        <h3>Stair Risers</h3>
+        <div class="swatches" id="stairRiserOptions"></div>
+        <p class="hint">Stairs descend from one deck edge to the ground; the railing opens
+           automatically where they meet the deck.</p>
+      </div>
+
+      <!-- STEP 4: WALLS -->
+      <div class="step-pane" id="stepWalls" data-step="walls" hidden>
+        <h3>House Wall</h3>
+        <div class="level-row">
+          <button class="ghost-btn" id="wallToggleBtn">＋ Add a wall</button>
+        </div>
+        <div class="options" id="wallModeOptions"></div>
+        <h3>Cladding</h3>
+        <div class="swatches" id="claddingOptions"></div>
+        <h3>Doors</h3>
+        <div class="counter"><button class="ghost-btn" id="doorMinus">－</button>
+          <span id="doorCount">1</span><button class="ghost-btn" id="doorPlus">＋</button></div>
+        <h3>Windows</h3>
+        <div class="counter"><button class="ghost-btn" id="winMinus">－</button>
+          <span id="winCount">2</span><button class="ghost-btn" id="winPlus">＋</button></div>
+        <p class="hint">A wall is placed along the back (house) edge of the deck.</p>
+      </div>
+
+      <!-- STEP 5: FURNITURE -->
+      <div class="step-pane" id="stepFurniture" data-step="furniture" hidden>
+        <h3>Add Furniture</h3>
+        <div class="options" id="furnitureOptions"></div>
+        <p class="hint">Tap an item to place it on the deck. Tap again to remove.</p>
       </div>
 
       <div class="summary" id="summary"></div>

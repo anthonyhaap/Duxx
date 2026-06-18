@@ -84,6 +84,39 @@ export const DECK_DIRS = {
   diagonal:   { name: "Diagonal",   rot: Math.PI / 4 },
 };
 
+export const STAIR_COLORS = {
+  gray:      { name: "Gray",       base: "#9a958d" },
+  beige:     { name: "Beige",      base: "#c9b89a" },
+  darkbrown: { name: "Dark Brown", base: "#5a4332" },
+  tan:       { name: "Tan",        base: "#b9854f" },
+  darkgray:  { name: "Dark Gray",  base: "#565a5f" },
+  darkbeige: { name: "Dark Beige", base: "#9a8b6f" },
+  brown:     { name: "Brown",      base: "#8a5a2f" },
+  espresso:  { name: "Espresso",   base: "#3e2c20" },
+};
+
+export const CLADDING = {
+  red:     { name: "Red",     base: "#9e3b2e" },
+  blue:    { name: "Blue",    base: "#5b7a93" },
+  green:   { name: "Green",   base: "#5d6e4a" },
+  white:   { name: "White",   base: "#e6e7e2" },
+  brown:   { name: "Brown",   base: "#6e5a44" },
+  yellow:  { name: "Yellow",  base: "#e9dca6" },
+  gray:    { name: "Gray",    base: "#8c9296" },
+  belmont: { name: "Belmont", base: "#9a5a48", brick: true },
+};
+
+export const FURNITURE = {
+  table:    { name: "Table & Chairs" },
+  lounge:   { name: "Lounge Chair" },
+  planter:  { name: "Planter" },
+  grill:    { name: "Grill" },
+  umbrella: { name: "Umbrella" },
+};
+
+export const STEPS = [["shape","Shape"],["railing","Railing"],["stairs","Stairs"],["walls","Walls"],["furniture","Furniture"]];
+const STEP_INDEX = Object.fromEntries(STEPS.map(([k],i)=>[k,i]));
+
 /* ---------- State + history ---------- */
 function defaultState() {
   return {
@@ -94,10 +127,13 @@ function defaultState() {
     decking: "driftwood", fascia: "walnut", deckDir: "horizontal",
     disabledEdges: [],               // base-level edges with railing removed
     stairsEdge: null,                // base-level edge index with stairs
+    stairBoard: "gray", stairRiser: "darkbrown", stairPlatform: false,
     gate: false,
     product: "classic", infill: "picket", color: "black",
     topRail: "flat", postSize: "2.5", spacing: "post",
     postStyle: "postToPost", cap: "standard",
+    wallOn: false, wallMode: "attached", cladding: "white", doors: 1, windows: 2,
+    furniture: { table: false, lounge: false, planter: false, grill: false, umbrella: false },
   };
 }
 let state = defaultState();
@@ -276,19 +312,17 @@ function rebuildScene() {
   const plankMat = new THREE.MeshStandardMaterial({ map: plankTex, roughness:0.8, metalness:0, side: THREE.DoubleSide });
   const fasciaMat = new THREE.MeshStandardMaterial({ color: DECKING[state.fascia].base, roughness:0.85, side: THREE.DoubleSide });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness:0.9 });
+  const stairBoardMat = new THREE.MeshStandardMaterial({ color: STAIR_COLORS[state.stairBoard].base, roughness:0.8 });
+  const stairRiserMat = new THREE.MeshStandardMaterial({ color: STAIR_COLORS[state.stairRiser].base, roughness:0.85 });
 
   computeDimEdges();
+  const si = STEP_INDEX[state.step];
 
   let topY=0.5;
-  const lv0Top = levelInfo()[0].topY;
-  levelInfo().forEach((lv) => {
-    const supportBaseY = lv.base ? 0 : lv0Top;
-    buildDeckLevel(worldGroup, lv.poly, lv.topY, plankMat, fasciaMat, woodMat, supportBaseY);
-
-    if (lv.base && state.stairsEdge != null)
-      buildStairs(worldGroup, lv.poly, state.stairsEdge, lv.topY, plankMat, woodMat);
-
-    if (state.step === "railing") {
+  const levels = levelInfo(), lv0 = levels[0];
+  levels.forEach((lv) => {
+    buildDeckLevel(worldGroup, lv.poly, lv.topY, plankMat, fasciaMat, woodMat, lv.base ? 0 : lv0.topY);
+    if (si >= STEP_INDEX.railing) {
       const opts = lv.base
         ? { disabled: new Set(state.disabledEdges), openingFor: openingForEdge }
         : { disabled: new Set(), openingFor: () => null };
@@ -297,8 +331,15 @@ function rebuildScene() {
     topY = lv.topY;
   });
 
-  if (state.step === "railing") buildEdgeSelectors(levelInfo()[0].poly, levelInfo()[0].topY);
-  if (state.step === "shape")   buildResizeHandles(levelInfo()[0].poly, levelInfo()[0].topY);
+  if (state.stairsEdge != null && si >= STEP_INDEX.stairs)
+    buildStairs(worldGroup, lv0.poly, state.stairsEdge, lv0.topY, plankMat, stairBoardMat, stairRiserMat, woodMat, state.stairPlatform);
+  if (state.wallOn && si >= STEP_INDEX.walls)
+    buildWall(worldGroup, lv0.poly, lv0.topY);
+  if (si >= STEP_INDEX.furniture)
+    buildFurniture(worldGroup, lv0.poly, lv0.topY);
+
+  if (state.step === "railing") buildEdgeSelectors(lv0.poly, lv0.topY);
+  if (state.step === "shape")   buildResizeHandles(lv0.poly, lv0.topY);
 
   scene.add(worldGroup);
   if (controls) controls.target.set(0, topY*0.6+0.2, 0);
@@ -325,30 +366,134 @@ function buildDeckLevel(parent, poly, topY, plankMat, fasciaMat, woodMat, suppor
 }
 
 /* ---------- stairs ---------- */
-function buildStairs(parent, poly, edgeIdx, topY, plankMat, woodMat) {
+export function buildStairs(parent, poly, edgeIdx, topY, plankMat, boardMat, riserMat, woodMat, withPlatform) {
   const a=poly[edgeIdx], b=poly[(edgeIdx+1)%poly.length];
   const ax=a[0]*FT, az=a[1]*FT, bx=b[0]*FT, bz=b[1]*FT;
   const mx=(ax+bx)/2, mz=(az+bz)/2, A=Math.atan2(bz-az,bx-ax);
   const C=centroid(poly), cx=C[0]*FT, cz=C[1]*FT;
 
-  const nSteps=Math.max(1,Math.ceil(topY/RISER));
   const g=new THREE.Group(); g.position.set(mx,0,mz); g.rotation.y=-A;   // local +x along edge, local +z perpendicular
+  const plat = withPlatform ? 2.5*FT : 0;
+  if (withPlatform) {                               // landing platform at deck level
+    const pf=new THREE.Mesh(new THREE.BoxGeometry(STAIR_W+0.4, 0.12, plat), plankMat);
+    pf.position.set(0, topY-0.06, plat/2); pf.castShadow=true; pf.receiveShadow=true; g.add(pf);
+    for (const px of [-STAIR_W/2-0.15, STAIR_W/2+0.15]){
+      const leg=new THREE.Mesh(new THREE.BoxGeometry(0.1, topY, 0.1), woodMat);
+      leg.position.set(px, topY/2, plat-0.1); g.add(leg);
+    }
+  }
+  const nSteps=Math.max(1,Math.ceil(topY/RISER));
   for (let k=1;k<=nSteps;k++){
-    const ty=topY-k*RISER, dz=k*TREAD;
-    const tread=new THREE.Mesh(new THREE.BoxGeometry(STAIR_W,0.06,TREAD+0.02), plankMat);
+    const ty=topY-k*RISER, dz=plat+k*TREAD;
+    const tread=new THREE.Mesh(new THREE.BoxGeometry(STAIR_W,0.06,TREAD+0.02), boardMat);
     tread.position.set(0, ty-0.03, dz); tread.castShadow=true; tread.receiveShadow=true; g.add(tread);
-    const riser=new THREE.Mesh(new THREE.BoxGeometry(STAIR_W,RISER,0.03), woodMat);
+    const riser=new THREE.Mesh(new THREE.BoxGeometry(STAIR_W,RISER,0.03), riserMat);
     riser.position.set(0, ty-RISER/2, dz-TREAD/2); g.add(riser);
   }
   for (const sx of [-STAIR_W/2-0.03, STAIR_W/2+0.03]) {
     const len=Math.hypot(nSteps*TREAD, topY);
     const str=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.12,len), woodMat);
-    str.position.set(sx, topY/2-0.06, nSteps*TREAD/2); str.rotation.x=Math.atan2(topY,nSteps*TREAD); g.add(str);
+    str.position.set(sx, topY/2-0.06, plat+nSteps*TREAD/2); str.rotation.x=Math.atan2(topY,nSteps*TREAD); g.add(str);
   }
   // ensure local +z points outward (away from deck centroid); flip 180° if not
   const test=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), g.rotation.y);
   if ((mx+test.x-cx)**2+(mz+test.z-cz)**2 < (mx-cx)**2+(mz-cz)**2) g.rotation.y=-A+Math.PI;
   parent.add(g);
+}
+
+/* ---------- house wall (cladding / doors / windows) ---------- */
+function makeSidingTexture(hex) {
+  const c=document.createElement("canvas"); c.width=c.height=128; const ctx=c.getContext("2d");
+  ctx.fillStyle=hex; ctx.fillRect(0,0,128,128);
+  ctx.strokeStyle=shade(hex,-0.18); ctx.lineWidth=2;
+  for (let y=10;y<128;y+=16){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(128,y); ctx.stroke(); }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+function makeBrickTexture(hex) {
+  const c=document.createElement("canvas"); c.width=c.height=128; const ctx=c.getContext("2d");
+  ctx.fillStyle=shade(hex,-0.3); ctx.fillRect(0,0,128,128);
+  ctx.fillStyle=hex;
+  for (let r=0,row=0;r<128;r+=18,row++){ for (let x=(row%2?-18:0);x<128;x+=38){ ctx.fillRect(x+2,r+2,34,14); } }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+export function buildWall(parent, poly, deckTopY) {
+  let bi=0, bestz=Infinity;                          // back edge = most negative average z
+  for (let i=0;i<poly.length;i++){ const mz=(poly[i][1]+poly[(i+1)%poly.length][1])/2; if (mz<bestz){bestz=mz;bi=i;} }
+  const a=poly[bi], b=poly[(bi+1)%poly.length];
+  const ax=a[0]*FT,az=a[1]*FT,bx=b[0]*FT,bz=b[1]*FT;
+  const mx=(ax+bx)/2,mz=(az+bz)/2,L=Math.hypot(bx-ax,bz-az),A=Math.atan2(bz-az,bx-ax);
+  const C=centroid(poly), cx=C[0]*FT, cz=C[1]*FT, thick=0.3*FT, H=deckTopY+9*FT;
+  const off = state.wallMode==="detached" ? 1.5*FT : 0;
+
+  const g=new THREE.Group(); g.position.set(mx,0,mz); g.rotation.y=-A;
+  // which local-z is outward (away from deck) — wall sits there, faces the deck
+  const w=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), g.rotation.y);
+  const outward = ((mx+w.x-cx)**2+(mz+w.z-cz)**2) > ((mx-cx)**2+(mz-cz)**2) ? 1 : -1;
+  const slabZ = outward*(thick/2+off), faceZ = slabZ - outward*(thick/2+0.02);
+
+  const cl=CLADDING[state.cladding];
+  const tex=cl.brick?makeBrickTexture(cl.base):makeSidingTexture(cl.base);
+  tex.repeat.set(Math.max(3,Math.round(L)), Math.max(4,Math.round(H*1.4)));
+  const cladMat=new THREE.MeshStandardMaterial({ map:tex, roughness:0.92, side:THREE.DoubleSide });
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(L+0.2,H,thick), cladMat);
+  slab.position.set(0,H/2,slabZ); slab.castShadow=true; slab.receiveShadow=true; g.add(slab);
+
+  const doorMat=new THREE.MeshStandardMaterial({ color:0x5a4633, roughness:0.7 });
+  const glassMat=new THREE.MeshStandardMaterial({ color:0xbcd6e0, transparent:true, opacity:0.55, roughness:0.05, metalness:0.1 });
+  const frameMat=new THREE.MeshStandardMaterial({ color:0xf0f0ec, roughness:0.6 });
+  const place=(n, w0,h0, yBase, mat, frame)=>{
+    for (let i=0;i<n;i++){
+      const x=L*((i+1)/(n+1)) - L/2;
+      if (frame) { const f=new THREE.Mesh(new THREE.BoxGeometry(w0+0.12,h0+0.12,0.04),frameMat); f.position.set(x,yBase,faceZ); g.add(f); }
+      const m=new THREE.Mesh(new THREE.BoxGeometry(w0,h0,0.05),mat); m.position.set(x,yBase,faceZ+outward*0.005); g.add(m);
+    }
+  };
+  if (state.doors>0)   place(state.doors, 3*FT, 6.7*FT, deckTopY+6.7*FT/2, doorMat, true);
+  if (state.windows>0) place(state.windows, 3*FT, 3*FT, deckTopY+5.2*FT, glassMat, true);
+  parent.add(g);
+}
+
+/* ---------- furniture ---------- */
+export function buildFurniture(parent, poly, deckTopY) {
+  const C=centroid(poly), cx=C[0]*FT, cz=C[1]*FT, f=state.furniture;
+  const cyl=(r,h,col,x,y,z)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,18), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; parent.add(m); return m; };
+  const box=(w,h,d,col,x,y,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; parent.add(m); return m; };
+
+  if (f.table) {
+    const tx=cx, tz=cz, ty=deckTopY;
+    cyl(0.07,0.74*FT*2,0x6b6b6b, tx,ty+0.22,tz);                 // pedestal
+    cyl(0.62*FT,0.05, 0x8a8a8a, tx,ty+0.44,tz);                  // tabletop
+    for (const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      box(0.42*FT,0.42*FT,0.42*FT, 0x39506a, tx+dx*1.4*FT, ty+0.2, tz+dz*1.4*FT);  // chair seat
+      box(0.42*FT,0.5*FT,0.06, 0x2f435a, tx+dx*1.62*FT, ty+0.42, tz+dz*1.4*FT);    // chair back (approx)
+    }
+  }
+  if (f.umbrella) {
+    const tx=cx, tz=cz;
+    cyl(0.025,2.4*FT,0x8a8a8a, tx,deckTopY+1.2*FT,tz);
+    const can=new THREE.Mesh(new THREE.ConeGeometry(1.5*FT,0.5*FT,16), new THREE.MeshStandardMaterial({color:0x4f8a5b,roughness:0.8}));
+    can.position.set(tx,deckTopY+2.55*FT,tz); can.castShadow=true; parent.add(can);
+  }
+  if (f.lounge) {
+    const lx=cx-3.2*FT, lz=cz+1.4*FT;
+    box(1.9*FT,0.18*FT,0.8*FT, 0xcfc9bd, lx,deckTopY+0.5*FT,lz);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(0.8*FT,0.1*FT,0.9*FT), new THREE.MeshStandardMaterial({color:0xcfc9bd,roughness:0.8}));
+    back.position.set(lx+0.9*FT,deckTopY+0.8*FT,lz); back.rotation.z=-0.7; back.castShadow=true; parent.add(back);
+    for (const dx of [-0.8,0.8]) for (const dz of [-0.35,0.35]) box(0.08,0.5*FT,0.08,0x777,lx+dx*FT,deckTopY+0.25*FT,lz+dz*FT*2);
+  }
+  if (f.planter) {
+    const px=cx+3.4*FT, pz=cz-3*FT;
+    box(0.9*FT,0.7*FT,0.9*FT, 0x6e5a44, px,deckTopY+0.35*FT,pz);
+    const bush=new THREE.Mesh(new THREE.SphereGeometry(0.6*FT,14,12), new THREE.MeshStandardMaterial({color:0x4a7a3c,roughness:1}));
+    bush.position.set(px,deckTopY+0.95*FT,pz); bush.castShadow=true; parent.add(bush);
+  }
+  if (f.grill) {
+    const gx=cx+3.2*FT, gz=cz+2.6*FT;
+    box(1.2*FT,0.5*FT,0.7*FT, 0x2c2c30, gx,deckTopY+0.85*FT,gz);
+    const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.6*FT,0.6*FT,1.2*FT,16,1,false,0,Math.PI), new THREE.MeshStandardMaterial({color:0x1d1d20,roughness:0.5,metalness:0.3}));
+    lid.rotation.z=Math.PI/2; lid.position.set(gx,deckTopY+1.1*FT,gz); lid.castShadow=true; parent.add(lid);
+    for (const dx of [-0.45,0.45]) for (const dz of [-0.25,0.25]) box(0.05,0.85*FT,0.05,0x444,gx+dx*FT,deckTopY+0.42*FT,gz+dz*FT);
+  }
 }
 
 /* ============================================================
@@ -552,7 +697,7 @@ function pickEdge(e){ const m=pickEdgeMesh(e); return m?m.userData.edge:null; }
    ============================================================ */
 function updateBadge() {
   const el=document.getElementById("stageBadge"); if(!el)return;
-  el.textContent = state.step==="railing"
+  el.textContent = STEP_INDEX[state.step] >= STEP_INDEX.railing
     ? `${PRODUCTS[state.product].name} · ${INFILLS[state.infill].name} · ${FINISHES[state.color].name}`
     : `${SHAPES[state.levels[0].shape].label} · ${state.size.w}'×${state.size.d}' · ${ftIn(state.heightIn)}`;
 }
@@ -592,14 +737,29 @@ function buildStaticUI() {
   document.getElementById("postOptions").innerHTML =
     `<div class="opt-row-label">Post size</div>`+Object.entries(POST_SIZES).map(([k,v])=>`<button class="opt" data-key="postSize" data-val="${k}">${v.name}</button>`).join("")+
     `<div class="opt-row-label">Rail style</div><button class="opt" data-key="spacing" data-val="post">Post-to-post</button><button class="opt" data-key="spacing" data-val="continuous">Continuous</button>`;
+
+  // dynamic stepper
+  document.getElementById("stepper").innerHTML = STEPS.map(([k,l],i)=>
+    `<button class="step" data-step="${k}"><b>${i+1}</b> ${l}</button>`).join("");
+
+  const swatchRow=(obj,key)=>Object.entries(obj).map(([k,v])=>
+    `<button class="swatch" data-key="${key}" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
+  document.getElementById("stairBoardOptions").innerHTML = swatchRow(STAIR_COLORS,"stairBoard");
+  document.getElementById("stairRiserOptions").innerHTML = swatchRow(STAIR_COLORS,"stairRiser");
+  document.getElementById("claddingOptions").innerHTML = swatchRow(CLADDING,"cladding");
+  document.getElementById("wallModeOptions").innerHTML =
+    `<button class="opt" data-key="wallMode" data-val="attached">Attached to wall</button>`+
+    `<button class="opt" data-key="wallMode" data-val="detached">Detached from wall</button>`;
+  document.getElementById("furnitureOptions").innerHTML = Object.entries(FURNITURE).map(([k,v])=>
+    `<button class="opt" data-furn="${k}">${v.name}</button>`).join("");
 }
 
 function renderUI() {
-  document.getElementById("stepShape").hidden = state.step!=="shape";
-  document.getElementById("stepRailing").hidden = state.step!=="railing";
+  document.querySelectorAll(".step-pane").forEach(p=>p.hidden = p.dataset.step!==state.step);
   document.querySelectorAll(".step").forEach(b=>b.classList.toggle("active", b.dataset.step===state.step));
   document.querySelectorAll("[data-key]").forEach(el=>el.classList.toggle("active", state[el.dataset.key]===el.dataset.val));
   document.querySelectorAll('[data-key="shape"]').forEach(el=>el.classList.toggle("active", state.levels[0].shape===el.dataset.val));
+  document.querySelectorAll("[data-furn]").forEach(el=>el.classList.toggle("active", state.furniture[el.dataset.furn]));
 
   const ph=document.getElementById("productHint"); if(ph) ph.textContent=PRODUCTS[state.product].hint;
   const ch=document.getElementById("colorHint"); if(ch) ch.textContent=`${FINISHES[state.color].name} — architectural-grade powder coat.`;
@@ -611,15 +771,23 @@ function renderUI() {
   document.getElementById("addLevelBtn").hidden=!!state.levels[1];
   document.getElementById("removeLevelBtn").hidden=!state.levels[1];
 
-  const sb=document.getElementById("stairsBtn"), srb=document.getElementById("stairsRotBtn");
-  if (state.stairsEdge!=null){ sb.textContent="✓ Stairs added"; sb.classList.add("active"); srb.hidden=false; }
-  else { sb.textContent="▦ Add stairs"; sb.classList.remove("active"); srb.hidden=true; }
+  const sb=document.getElementById("stairsBtn"), srb=document.getElementById("stairsRotBtn"), pf=document.getElementById("platformBtn");
+  if (state.stairsEdge!=null){ sb.textContent="✓ Stairs added"; sb.classList.add("active"); srb.hidden=false; pf.hidden=false; }
+  else { sb.textContent="▦ Add stairs"; sb.classList.remove("active"); srb.hidden=true; pf.hidden=true; }
+  pf.textContent = state.stairPlatform ? "✓ With platform" : "＋ With platform"; pf.classList.toggle("active", state.stairPlatform);
+
   const gb=document.getElementById("gateBtn");
   gb.textContent = state.gate ? "✓ Gate added" : "⊏ Add a gate"; gb.classList.toggle("active", state.gate);
 
+  const wt=document.getElementById("wallToggleBtn");
+  wt.textContent = state.wallOn ? "✓ Wall added" : "＋ Add a wall"; wt.classList.toggle("active", state.wallOn);
+  document.getElementById("doorCount").textContent = state.doors;
+  document.getElementById("winCount").textContent = state.windows;
+
+  const i=STEP_INDEX[state.step];
   const next=document.getElementById("nextBtn"), back=document.getElementById("backBtn");
-  if (state.step==="shape"){ next.textContent="Next step: Railing ▶"; back.hidden=true; }
-  else { next.textContent="Request a Quote ▶"; back.hidden=false; }
+  next.textContent = i===STEPS.length-1 ? "Request a Quote ▶" : `Next: ${STEPS[i+1][1]} ▶`;
+  back.hidden = i===0;
 
   document.getElementById("undoBtn").disabled=!undoStack.length;
   document.getElementById("redoBtn").disabled=!redoStack.length;
@@ -636,15 +804,23 @@ function renderSummary() {
     ["Decking", DECKING[state.decking].name],
     ["Stairs", state.stairsEdge!=null?"Yes":"No"],
   ];
-  if (state.step==="railing") rows.push(
+  const si=STEP_INDEX[state.step];
+  if (si>=STEP_INDEX.railing) rows.push(
     ["Railing", PRODUCTS[state.product].name],
     ["Infill", INFILLS[state.infill].name],
     ["Finish", FINISHES[state.color].name],
     ["Post style", POST_STYLES[state.postStyle].name],
     ["Caps", CAPS[state.cap].name],
     ["Gate", state.gate?"Yes":"No"],
-    ["Open sides", state.disabledEdges.length||"0"],
   );
+  if (si>=STEP_INDEX.walls && state.wallOn) rows.push(
+    ["Wall", CLADDING[state.cladding].name],
+    ["Doors / Windows", `${state.doors} / ${state.windows}`],
+  );
+  if (si>=STEP_INDEX.furniture) {
+    const fl=Object.keys(state.furniture).filter(k=>state.furniture[k]).length;
+    rows.push(["Furniture", fl?`${fl} item${fl>1?"s":""}`:"None"]);
+  }
   document.getElementById("summary").innerHTML =
     `<div style="font-weight:700;margin-bottom:8px">Your deck</div>`+
     rows.map(([k,v])=>`<div class="row"><span>${k}</span><span>${v}</span></div>`).join("");
@@ -663,12 +839,24 @@ function registerEvents() {
         else state[key]=val;
       }); return;
     }
+    const furn=e.target.closest("[data-furn]");
+    if (furn){ commit(()=>{ const k=furn.dataset.furn; state.furniture={ ...state.furniture, [k]: !state.furniture[k] }; }); return; }
     const stp=e.target.closest(".step"); if (stp){ commit(()=>state.step=stp.dataset.step); return; }
   });
 
+  const go=delta=>{ const i=STEP_INDEX[state.step]+delta; if(i<0||i>=STEPS.length)return; commit(()=>state.step=STEPS[i][0]); };
   document.getElementById("nextBtn").addEventListener("click", e=>{ e.preventDefault();
-    if (state.step==="shape") commit(()=>state.step="railing"); else window.alert("Quote request — your configuration is saved in the summary."); });
-  document.getElementById("backBtn").addEventListener("click", ()=>commit(()=>state.step="shape"));
+    if (STEP_INDEX[state.step]===STEPS.length-1) window.alert("Quote request — your configuration is saved in the summary.");
+    else go(1); });
+  document.getElementById("backBtn").addEventListener("click", ()=>go(-1));
+
+  document.getElementById("platformBtn").addEventListener("click", ()=>commit(()=>state.stairPlatform=!state.stairPlatform));
+  document.getElementById("wallToggleBtn").addEventListener("click", ()=>commit(()=>state.wallOn=!state.wallOn));
+  const clampDW=(k,d,max)=>commit(()=>state[k]=Math.max(0,Math.min(max,state[k]+d)));
+  document.getElementById("doorPlus").addEventListener("click", ()=>clampDW("doors",1,4));
+  document.getElementById("doorMinus").addEventListener("click", ()=>clampDW("doors",-1,4));
+  document.getElementById("winPlus").addEventListener("click", ()=>clampDW("windows",1,6));
+  document.getElementById("winMinus").addEventListener("click", ()=>clampDW("windows",-1,6));
 
   document.getElementById("addLevelBtn").addEventListener("click", ()=>commit(()=>state.levels.push({ shape: state.levels[0].shape })));
   document.getElementById("removeLevelBtn").addEventListener("click", ()=>commit(()=>state.levels.length=1));
