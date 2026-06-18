@@ -1,26 +1,29 @@
 # Kadenz 3D Deck Railing Visualizer (Replica)
 
-An interactive **3D** deck-railing visualizer inspired by the
+An interactive **3D deck designer** modeled on the
 [Kadenz Aluminum Railings Deck Visualizer](https://kadenzrailing.com/visualizer/).
-Design an aluminum railing and **orbit around it in real time** on a styled, elevated
-deck — drag to rotate, scroll to zoom.
+Like the real tool, it's a two-step flow in a studio grid environment:
 
-The railing is **built procedurally in Three.js** from your selections (no pre-baked
-product photos), so every combination of line, infill, finish, top rail and post size
-produces a fresh 3D model with real lighting and shadows.
+1. **Shape** — pick a deck footprint (Square, Notched, L-Shaped, T-Shaped), set the
+   **height** with the slider, choose a decking color, and **add a second level**.
+2. **Railing** — wrap the deck perimeter with a Kadenz aluminum railing and configure
+   the line, infill, finish, top rail and posts.
+
+Everything is **built procedurally in Three.js** from your selections — drag to orbit,
+scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 
 ## Features
 
-- **Real 3D scene** — Three.js (WebGL) with orbit controls, soft shadows, hemisphere + sun lighting
-- **Railing lines** — Kadenz Classic, Elegance, Commercial (each changes profile weight & default top rail)
-- **Infill styles** — Picket balusters, tempered **Glass** panels (with standoff spigots), horizontal **Cable** runs
-- **Finishes** — Matte Black, Bright White, Bronze, Sandstone (powder-coat aluminum materials)
-- **Top rail profiles** — Flat (square box) and Crowned (rounded cylinder)
-- **Posts & spacing** — 2", 2½", 3½" post sizes; post-to-post or continuous-span layouts
-- **Scene presets** — Backyard, Lakeside, Patio, Twilight — each sets sky gradient, ground color and light mood
-- **Upload a backdrop photo** — used as the scene background behind the railing
-- **Save view** — exports the current camera angle to a PNG
-- **Auto-rotate**, **reset camera**, and a live configuration summary + quote CTA
+- **Studio environment** — gridded floor fading to a soft horizon (fog), like the original tool
+- **Deck shapes** — Square, Notched, two L-Shapes and a T-Shape, built as extruded footprint polygons with composite-board decking + fascia + support posts
+- **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
+- **Levels** — add a stacked second tier that rests on the base deck
+- **Decking colors** — Driftwood, Cedar, Walnut, Mahogany, Slate
+- **Railing lines** — Classic, Elegance, Commercial (profile weight + default top rail)
+- **Infill styles** — Picket, tempered **Glass** (with spigots), horizontal **Cable** — generated per bay around the whole perimeter
+- **Finishes** — Matte Black, White, Bronze, Sandstone powder-coat materials
+- **Top rail profiles** (flat / crowned) and **post sizes/spacing**
+- **Upload a backdrop photo**, **Save view** (PNG), **auto-rotate**, reset camera, and a live summary
 
 ## Run it
 
@@ -40,15 +43,17 @@ Then open <http://localhost:5173>. (Requires a WebGL-capable browser.)
 - `index.html` — layout + importmap mapping `three` / `three/addons/` to `./vendor/`
 - `styles.css` — dark, brand-styled UI; the stage hosts the WebGL canvas
 - `app.js` (ES module)
-  - `initThree()` — renderer, camera, `OrbitControls`, lights, resize handling, render loop
-  - `buildDeckAndGround()` — elevated deck slab (procedural plank texture) + ground plane
-  - `applyScene()` — sky gradient (canvas texture), ground color and light mood per preset
-  - `buildRailing(state)` — posts, top/bottom rails and the chosen top-rail profile
-  - `buildInfill()` — picket / glass / cable geometry generated per bay between posts
-  - `buildUI()` / `rebuildRailing()` — wires the configurator and rebuilds the model on change
+  - `initThree()` — renderer, camera, `OrbitControls`, lights, fog, grid floor, render loop
+  - `SHAPES` — deck footprints as polygons; `buildDeckLevel()` extrudes the slab, textures the
+    boards and drops support posts at corners/edges
+  - `levelInfo()` / `rebuildScene()` — resolves levels + heights and rebuilds deck and railing
+  - `buildPerimeterRailing()` — walks each polygon edge and calls `buildRailingEdge()` /
+    `buildInfill()` to generate posts, rails and picket/glass/cable infill around the deck
+  - state + history: `commit()`, `undo()`, `redo()` snapshot the full design
+  - `buildStaticUI()` / `renderUI()` — wires the stepper, shape grid, swatches and HUD
 
-`buildRailing()` is exported and has no DOM/WebGL dependencies, so the scene graph can be
-unit-tested in Node (it builds the same meshes the browser renders).
+`buildPerimeterRailing()` is exported and has no DOM/WebGL dependencies, so the scene graph
+can be unit-tested in Node (it builds the same meshes the browser renders).
 
 ## Vendored dependency
 
