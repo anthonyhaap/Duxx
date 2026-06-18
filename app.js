@@ -39,12 +39,18 @@ export const DECKING = {
   hatteras:   { name: "Hatteras",    base: "#6e6a61" },
 };
 
+/* DUXXBAK® board profiles — names, descriptions and real face widths/thicknesses (inches) */
 export const DECK_PROFILES = {
-  duxxbakDekk:  { name: "DuxxBak® Dekk",     desc: "Water-shedding, no-drip-through interlocking surface" },
-  optimaDekk:   { name: "OPTIMA® Dekk",      desc: "Grooved or solid edge, 5/4 wood profile" },
-  optimaDekkLT: { name: "OPTIMA® Dekk LT",   desc: "Lightweight reduced profile, ArmorCap finish" },
-  iDekk:        { name: "I.Dekk®",           desc: "Tongue-and-groove I-beam, continuous surface" },
-  iDekkHD:      { name: "I.Dekk® HD",        desc: "Heavy-duty hollow profile for marine & docks" },
+  duxxbak:   { name: "DuxxBak® Dekk",          desc: 'Water-shedding interlock · 5.75" × 1.25"', w: 5.75, t: 1.25 },
+  optima:    { name: "Optima® Dekk",           desc: 'Premium solid-core, square edge · 5.4" × 1"', w: 5.4,  t: 1.0 },
+  optimaG:   { name: "Optima® Dekk Grooved",   desc: 'Solid-core grooved · 5.4" × 1.065"', w: 5.4,  t: 1.065 },
+  optimaLT:  { name: "Optima® Dekk LT",        desc: 'Lightweight square edge · 5.28" × 0.955"', w: 5.28, t: 0.955 },
+  optimaLTG: { name: "Optima® Dekk LT Grooved",desc: 'Lightweight grooved · 5.28" × 0.955"', w: 5.28, t: 0.955 },
+  iDekkS4S:  { name: "I.Dekk® S4S",            desc: 'I-beam square edge · 5.75" × 1.25"', w: 5.75, t: 1.25 },
+  iDekkTG:   { name: "I.Dekk® T&G",            desc: 'Tongue & groove · 5.75" × 1.25"', w: 5.75, t: 1.25 },
+  iDekkHD:   { name: "I.Dekk® HD S4S",         desc: 'Heavy-duty square edge · 5.5" × 1.25"', w: 5.5,  t: 1.25 },
+  iDekkHDTG: { name: "I.Dekk® HD T&G",         desc: 'Heavy-duty tongue & groove · 5.75" × 1.25"', w: 5.75, t: 1.25 },
+  commercial:{ name: "Commercial Dekk™",       desc: 'Commercial square edge · 8" × 1.5"', w: 8.0,  t: 1.5 },
 };
 
 export const DECK_FINISHES = {
@@ -147,7 +153,7 @@ function defaultState() {
     size: { w: 14, d: 12 },          // overall footprint (ft)
     heightIn: 39,                    // base deck height (in)
     decking: "islandMist", fascia: "jasper", deckDir: "horizontal",
-    deckProfile: "duxxbakDekk", deckFinish: "armorcap", boardLength: "16",
+    deckProfile: "duxxbak", deckFinish: "armorcap", boardLength: "16",
     disabledEdges: [],               // base-level edges with railing removed
     stairsEdge: null,                // base-level edge index with stairs
     stairBoard: "gray", stairRiser: "darkbrown", stairPlatform: false,
@@ -384,6 +390,9 @@ function rebuildScene() {
 
   const plankTex = makePlankTexture(DECKING[state.decking].base);
   plankTex.center.set(0.5, 0.5); plankTex.rotation = DECK_DIRS[state.deckDir].rot;
+  // scale the board texture so each plank matches the selected profile's real face width
+  const boardW = (DECK_PROFILES[state.deckProfile].w / 12) * FT;   // world units per board
+  plankTex.repeat.set(1 / (6 * boardW), 1 / (6 * boardW));         // makePlankTexture draws 6 boards per tile
   const plankMat = new THREE.MeshStandardMaterial({ map: plankTex, roughness: DECK_FINISHES[state.deckFinish].rough, metalness:0, side: THREE.DoubleSide });
   const fasciaMat = new THREE.MeshStandardMaterial({ color: DECKING[state.fascia].base, roughness:0.85, side: THREE.DoubleSide });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness:0.9 });
