@@ -132,11 +132,13 @@ function defaultState() {
     product: "classic", infill: "picket", color: "black",
     topRail: "flat", postSize: "2.5", spacing: "post",
     postStyle: "postToPost", cap: "standard",
-    wallOn: false, wallMode: "attached", cladding: "white", doors: 1, windows: 2,
+    wallOn: false, wallMode: "attached", wallEdge: null, cladding: "white", doors: 1, windows: 2,
     furniture: { table: false, lounge: false, planter: false, grill: false, umbrella: false },
+    furnPos: {},        // key -> [xFt, zFt]
+    night: false,
   };
 }
-let state = defaultState();
+export let state = defaultState();
 const undoStack = [], redoStack = [];
 
 function snapshot() { return JSON.stringify(state); }
@@ -167,6 +169,7 @@ function frontEdge() {
   return best;
 }
 function gateEdge(){ return state.stairsEdge!=null ? state.stairsEdge : frontEdge(); }
+function backEdge(poly){ let bi=0,bz=Infinity; for(let i=0;i<poly.length;i++){const mz=(poly[i][1]+poly[(i+1)%poly.length][1])/2; if(mz<bz){bz=mz;bi=i;}} return bi; }
 function openingForEdge(i) {
   const hasStairs = state.stairsEdge===i;
   const hasGate = state.gate && gateEdge()===i;
@@ -184,6 +187,7 @@ const pointer = { x: 0, y: 0 };
 let edgeSelectors = [], hoveredSel = null;
 let resizeHandles = [], dragging = null, hoverHandle = null;
 let dimEdges = [], dimLabels = [];
+let hemi, furnitureGroups = [], draggingFurn = null, capLightPos = [], pendingRefit = true;
 
 function initThree() {
   renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -206,7 +210,7 @@ function initThree() {
   controls.minDistance = 5; controls.maxDistance = 32; controls.maxPolarAngle = Math.PI * 0.495;
   controls.autoRotateSpeed = 1.0;
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa6b2, 1.15));
+  hemi = new THREE.HemisphereLight(0xffffff, 0x9aa6b2, 1.15); scene.add(hemi);
   sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(9, 15, 7); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   const sc = sun.shadow.camera; sc.left=-16; sc.right=16; sc.top=16; sc.bottom=-16; sc.near=0.5; sc.far=70;
@@ -224,6 +228,37 @@ function initThree() {
 }
 
 function onResize() { const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); }
+
+/* fit the camera so the whole deck sits comfortably in the frame */
+function fitCameraToDeck(poly, topY) {
+  const xs=poly.map(p=>p[0]*FT), zs=poly.map(p=>p[1]*FT);
+  const cx=(Math.min(...xs)+Math.max(...xs))/2, cz=(Math.min(...zs)+Math.max(...zs))/2;
+  const w=Math.max(...xs)-Math.min(...xs), d=Math.max(...zs)-Math.min(...zs);
+  const center=new THREE.Vector3(cx, topY*0.5+0.3, cz);
+  const radius=0.5*Math.hypot(w,d)+RAILH+0.4;
+  const dir=new THREE.Vector3().subVectors(camera.position, controls.target);
+  if (dir.lengthSq()<1e-4) dir.set(0.6,0.5,1);
+  dir.normalize();
+  const dist=(radius*1.35)/Math.sin((camera.fov*Math.PI/180)/2);
+  controls.target.copy(center);
+  camera.position.copy(center).addScaledVector(dir, dist);
+  camera.near=Math.max(0.1, dist/200); camera.far=dist*12; camera.updateProjectionMatrix();
+  controls.update();
+}
+
+/* day / night lighting + background */
+function applyEnvironment() {
+  if (!hemi) return;
+  if (state.night) {
+    hemi.intensity=0.18; hemi.color.set(0x2a3550); hemi.groundColor.set(0x10131c);
+    sun.intensity=0.25; sun.color.set(0x8aa0c8);
+    if (!photoTexture){ scene.background=new THREE.Color(0x0e131d); scene.fog=new THREE.Fog(0x0e131d,16,52); }
+  } else {
+    hemi.intensity=1.15; hemi.color.set(0xffffff); hemi.groundColor.set(0x9aa6b2);
+    sun.intensity=1.7; sun.color.set(0xffffff);
+    if (!photoTexture){ scene.background=skyTexture; scene.fog=new THREE.Fog(0xb1c1d0,14,52); }
+  }
+}
 function animate() { requestAnimationFrame(animate); controls.update(); updateDimLabels(); renderer.render(scene, camera); }
 
 /* ---------- on-canvas dimension labels ---------- */
@@ -306,6 +341,7 @@ function rebuildScene() {
   if (worldGroup) { scene.remove(worldGroup); disposeGroup(worldGroup); }
   worldGroup = new THREE.Group();
   edgeSelectors = []; hoveredSel = null; resizeHandles = []; hoverHandle = null;
+  furnitureGroups = []; capLightPos = [];
 
   const plankTex = makePlankTexture(DECKING[state.decking].base);
   plankTex.center.set(0.5, 0.5); plankTex.rotation = DECK_DIRS[state.deckDir].rot;
@@ -338,11 +374,21 @@ function rebuildScene() {
   if (si >= STEP_INDEX.furniture)
     buildFurniture(worldGroup, lv0.poly, lv0.topY);
 
-  if (state.step === "railing") buildEdgeSelectors(lv0.poly, lv0.topY);
+  if (state.step === "railing" || state.step === "walls") buildEdgeSelectors(lv0.poly, lv0.topY);
   if (state.step === "shape")   buildResizeHandles(lv0.poly, lv0.topY);
 
+  // night-time cap lights (subsampled to keep within sensible light counts)
+  if (state.night && capLightPos.length) {
+    const max=10, step=Math.max(1, Math.ceil(capLightPos.length/max));
+    for (let i=0;i<capLightPos.length;i+=step){
+      const p=capLightPos[i], pl=new THREE.PointLight(0xffd9a0, 6, 2.6, 2);
+      pl.position.set(p[0],p[1],p[2]); worldGroup.add(pl);
+    }
+  }
+
   scene.add(worldGroup);
-  if (controls) controls.target.set(0, topY*0.6+0.2, 0);
+  applyEnvironment();
+  if (controls && pendingRefit) { fitCameraToDeck(lv0.poly, topY); pendingRefit=false; }
   updateBadge();
 }
 
@@ -418,8 +464,7 @@ function makeBrickTexture(hex) {
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
 }
 export function buildWall(parent, poly, deckTopY) {
-  let bi=0, bestz=Infinity;                          // back edge = most negative average z
-  for (let i=0;i<poly.length;i++){ const mz=(poly[i][1]+poly[(i+1)%poly.length][1])/2; if (mz<bestz){bestz=mz;bi=i;} }
+  const bi = (state.wallEdge!=null && state.wallEdge<poly.length) ? state.wallEdge : backEdge(poly);
   const a=poly[bi], b=poly[(bi+1)%poly.length];
   const ax=a[0]*FT,az=a[1]*FT,bx=b[0]*FT,bz=b[1]*FT;
   const mx=(ax+bx)/2,mz=(az+bz)/2,L=Math.hypot(bx-ax,bz-az),A=Math.atan2(bz-az,bx-ax);
@@ -454,46 +499,44 @@ export function buildWall(parent, poly, deckTopY) {
   parent.add(g);
 }
 
-/* ---------- furniture ---------- */
+/* ---------- furniture (draggable) ---------- */
+const FURN_DEFAULTS = { table:[0,0], umbrella:[0,0], lounge:[-3.2,1.4], planter:[3.4,-3], grill:[3.2,2.6] };
 export function buildFurniture(parent, poly, deckTopY) {
-  const C=centroid(poly), cx=C[0]*FT, cz=C[1]*FT, f=state.furniture;
-  const cyl=(r,h,col,x,y,z)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,18), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; parent.add(m); return m; };
-  const box=(w,h,d,col,x,y,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; parent.add(m); return m; };
+  const C=centroid(poly), f=state.furniture;
+  for (const key of Object.keys(FURNITURE)) {
+    if (!f[key]) continue;
+    const pos = state.furnPos[key] || [C[0]+FURN_DEFAULTS[key][0], C[1]+FURN_DEFAULTS[key][1]];
+    const g=new THREE.Group(); g.userData={ furn:key }; g.position.set(pos[0]*FT, deckTopY, pos[1]*FT);
+    const cyl=(r,h,col,x,y,z,ry)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,18), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); if(ry)m.rotation.z=ry; m.castShadow=true; g.add(m); return m; };
+    const box=(w,h,d,col,x,y,z,rz)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); if(rz)m.rotation.z=rz; m.castShadow=true; g.add(m); return m; };
 
-  if (f.table) {
-    const tx=cx, tz=cz, ty=deckTopY;
-    cyl(0.07,0.74*FT*2,0x6b6b6b, tx,ty+0.22,tz);                 // pedestal
-    cyl(0.62*FT,0.05, 0x8a8a8a, tx,ty+0.44,tz);                  // tabletop
-    for (const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
-      box(0.42*FT,0.42*FT,0.42*FT, 0x39506a, tx+dx*1.4*FT, ty+0.2, tz+dz*1.4*FT);  // chair seat
-      box(0.42*FT,0.5*FT,0.06, 0x2f435a, tx+dx*1.62*FT, ty+0.42, tz+dz*1.4*FT);    // chair back (approx)
+    if (key==="table") {
+      cyl(0.07,0.44,0x6b6b6b, 0,0.22,0);
+      cyl(0.62*FT,0.05,0x8a8a8a, 0,0.44,0);
+      for (const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        box(0.42*FT,0.42*FT,0.42*FT,0x39506a, dx*1.4*FT,0.2,dz*1.4*FT);
+        box(0.42*FT,0.5*FT,0.06,0x2f435a, dx*1.62*FT,0.42,dz*1.4*FT);
+      }
+    } else if (key==="umbrella") {
+      cyl(0.025,2.4*FT,0x8a8a8a, 0,1.2*FT,0);
+      const can=new THREE.Mesh(new THREE.ConeGeometry(1.5*FT,0.5*FT,16), new THREE.MeshStandardMaterial({color:0x4f8a5b,roughness:0.8}));
+      can.position.set(0,2.55*FT,0); can.castShadow=true; g.add(can);
+    } else if (key==="lounge") {
+      box(1.9*FT,0.18*FT,0.8*FT,0xcfc9bd, 0,0.5*FT,0);
+      const back=new THREE.Mesh(new THREE.BoxGeometry(0.8*FT,0.1*FT,0.9*FT), new THREE.MeshStandardMaterial({color:0xcfc9bd,roughness:0.8}));
+      back.position.set(0.9*FT,0.8*FT,0); back.rotation.z=-0.7; back.castShadow=true; g.add(back);
+      for (const dx of [-0.8,0.8]) for (const dz of [-0.35,0.35]) box(0.08,0.5*FT,0.08,0x777777, dx*FT,0.25*FT,dz*FT*2);
+    } else if (key==="planter") {
+      box(0.9*FT,0.7*FT,0.9*FT,0x6e5a44, 0,0.35*FT,0);
+      const bush=new THREE.Mesh(new THREE.SphereGeometry(0.6*FT,14,12), new THREE.MeshStandardMaterial({color:0x4a7a3c,roughness:1}));
+      bush.position.set(0,0.95*FT,0); bush.castShadow=true; g.add(bush);
+    } else if (key==="grill") {
+      box(1.2*FT,0.5*FT,0.7*FT,0x2c2c30, 0,0.85*FT,0);
+      const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.6*FT,0.6*FT,1.2*FT,16,1,false,0,Math.PI), new THREE.MeshStandardMaterial({color:0x1d1d20,roughness:0.5,metalness:0.3}));
+      lid.rotation.z=Math.PI/2; lid.position.set(0,1.1*FT,0); lid.castShadow=true; g.add(lid);
+      for (const dx of [-0.45,0.45]) for (const dz of [-0.25,0.25]) box(0.05,0.85*FT,0.05,0x444444, dx*FT,0.42*FT,dz*FT);
     }
-  }
-  if (f.umbrella) {
-    const tx=cx, tz=cz;
-    cyl(0.025,2.4*FT,0x8a8a8a, tx,deckTopY+1.2*FT,tz);
-    const can=new THREE.Mesh(new THREE.ConeGeometry(1.5*FT,0.5*FT,16), new THREE.MeshStandardMaterial({color:0x4f8a5b,roughness:0.8}));
-    can.position.set(tx,deckTopY+2.55*FT,tz); can.castShadow=true; parent.add(can);
-  }
-  if (f.lounge) {
-    const lx=cx-3.2*FT, lz=cz+1.4*FT;
-    box(1.9*FT,0.18*FT,0.8*FT, 0xcfc9bd, lx,deckTopY+0.5*FT,lz);
-    const back=new THREE.Mesh(new THREE.BoxGeometry(0.8*FT,0.1*FT,0.9*FT), new THREE.MeshStandardMaterial({color:0xcfc9bd,roughness:0.8}));
-    back.position.set(lx+0.9*FT,deckTopY+0.8*FT,lz); back.rotation.z=-0.7; back.castShadow=true; parent.add(back);
-    for (const dx of [-0.8,0.8]) for (const dz of [-0.35,0.35]) box(0.08,0.5*FT,0.08,0x777,lx+dx*FT,deckTopY+0.25*FT,lz+dz*FT*2);
-  }
-  if (f.planter) {
-    const px=cx+3.4*FT, pz=cz-3*FT;
-    box(0.9*FT,0.7*FT,0.9*FT, 0x6e5a44, px,deckTopY+0.35*FT,pz);
-    const bush=new THREE.Mesh(new THREE.SphereGeometry(0.6*FT,14,12), new THREE.MeshStandardMaterial({color:0x4a7a3c,roughness:1}));
-    bush.position.set(px,deckTopY+0.95*FT,pz); bush.castShadow=true; parent.add(bush);
-  }
-  if (f.grill) {
-    const gx=cx+3.2*FT, gz=cz+2.6*FT;
-    box(1.2*FT,0.5*FT,0.7*FT, 0x2c2c30, gx,deckTopY+0.85*FT,gz);
-    const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.6*FT,0.6*FT,1.2*FT,16,1,false,0,Math.PI), new THREE.MeshStandardMaterial({color:0x1d1d20,roughness:0.5,metalness:0.3}));
-    lid.rotation.z=Math.PI/2; lid.position.set(gx,deckTopY+1.1*FT,gz); lid.castShadow=true; parent.add(lid);
-    for (const dx of [-0.45,0.45]) for (const dz of [-0.25,0.25]) box(0.05,0.85*FT,0.05,0x444,gx+dx*FT,deckTopY+0.42*FT,gz+dz*FT);
+    parent.add(g); furnitureGroups.push(g);
   }
 }
 
@@ -541,10 +584,12 @@ function buildRailingEdge(parent, ax, az, bx, bz, topY, s, mats, postW, weight, 
   const railCenterY = railTopY - topProfileH/2;
 
   // posts at each boundary except the far corner (L) which the neighbor edge draws
+  const cosA=dx/L, sinA=dz/L, lit=(s.cap==="halo"||s.cap==="solar");
   for (const x of bnds) {
     if (Math.abs(x-L)<1e-4) continue;
     addBox(postW,postTopY,postW,x,postTopY/2,0,mats.metal);
     if (!overPost) buildCap(seg, x, postTopY, postW, s.cap, mats);
+    if (!overPost && lit) capLightPos.push([ax+x*cosA, topY+postTopY+0.04, az+x*sinA]);
   }
 
   const isGap=(b0,b1)=> gap && Math.abs(b0-gap[0])<1e-3 && Math.abs(b1-gap[1])<1e-3;
@@ -611,12 +656,15 @@ function buildInfill(seg, type, x0, x1, yBot, yTop, mats, addBox, z=0) {
 
 /* ---------- clickable edge selectors ---------- */
 function buildEdgeSelectors(poly, topY) {
+  const wallE = (state.wallEdge!=null && state.wallEdge<poly.length) ? state.wallEdge : backEdge(poly);
   for (let i=0;i<poly.length;i++){
     const [ax,az]=poly[i],[bx,bz]=poly[(i+1)%poly.length];
     const AX=ax*FT,AZ=az*FT,BX=bx*FT,BZ=bz*FT, L=Math.hypot(BX-AX,BZ-AZ), A=Math.atan2(BZ-AZ,BX-AX);
-    const on=!state.disabledEdges.includes(i);
-    const mat=new THREE.MeshBasicMaterial({ color: on?0x2f7fd6:0xe0a020, transparent:true, opacity:0.16, depthWrite:false });
-    const m=new THREE.Mesh(new THREE.BoxGeometry(L-0.04,0.05,0.22), mat);
+    let color, opacity;
+    if (state.step==="walls") { const cur=(i===wallE && state.wallOn); color=cur?0x2f7fd6:0x8aa0b4; opacity=cur?0.4:0.14; }
+    else { const on=!state.disabledEdges.includes(i); color=on?0x2f7fd6:0xe0a020; opacity=0.16; }
+    const m=new THREE.Mesh(new THREE.BoxGeometry(L-0.04,0.05,0.22),
+      new THREE.MeshBasicMaterial({ color, transparent:true, opacity, depthWrite:false }));
     m.position.set((AX+BX)/2, topY+0.04, (AZ+BZ)/2); m.rotation.y=-A; m.userData={ edge:i };
     m.renderOrder=2; worldGroup.add(m); edgeSelectors.push(m);
   }
@@ -648,30 +696,57 @@ function bindCanvasPointer() {
       if (h){ dragging={ ...h.userData, start: snapshot() }; controls.enabled=false;
         el.setPointerCapture && el.setPointerCapture(e.pointerId); el.style.cursor="grabbing"; return; }
     }
+    if (state.step==="furniture"){
+      const fg=pickFurniture(e);
+      if (fg){ draggingFurn={ key:fg.userData.furn, start: snapshot() }; controls.enabled=false;
+        el.setPointerCapture && el.setPointerCapture(e.pointerId); el.style.cursor="grabbing"; return; }
+    }
     down={x:e.clientX,y:e.clientY};
   });
 
   el.addEventListener("pointermove", e=>{
     if (dragging){ doResize(e); return; }
+    if (draggingFurn){ doFurnDrag(e); return; }
     if (state.step==="shape"){
       const h=pickHandle(e);
       if (hoverHandle && hoverHandle!==h) hoverHandle.scale.setScalar(1);
       if (h){ h.scale.setScalar(1.3); hoverHandle=h; el.style.cursor="grab"; } else { hoverHandle=null; el.style.cursor=""; }
       return;
     }
-    if (state.step!=="railing"){ if(hoveredSel){hoveredSel.material.opacity=0.16;hoveredSel=null;} el.style.cursor=""; return; }
-    const idx=pickEdgeMesh(e);
-    if (hoveredSel && hoveredSel!==idx){ hoveredSel.material.opacity=0.16; hoveredSel=null; }
-    if (idx){ idx.material.opacity=0.42; hoveredSel=idx; el.style.cursor="pointer"; } else el.style.cursor="";
+    if (state.step==="furniture"){ el.style.cursor = pickFurniture(e) ? "grab" : ""; return; }
+    if (state.step==="railing" || state.step==="walls"){
+      const idx=pickEdgeMesh(e);
+      if (hoveredSel && hoveredSel!==idx){ hoveredSel.material.opacity = hoveredSel.userData._base??0.16; hoveredSel=null; }
+      if (idx){ idx.userData._base=idx.material.opacity; idx.material.opacity=0.5; hoveredSel=idx; el.style.cursor="pointer"; } else el.style.cursor="";
+      return;
+    }
+    if(hoveredSel){hoveredSel.material.opacity=0.16;hoveredSel=null;} el.style.cursor="";
   });
 
   el.addEventListener("pointerup", e=>{
     if (dragging){ undoStack.push(dragging.start); redoStack.length=0; dragging=null; controls.enabled=true; el.style.cursor=""; renderUI(); return; }
+    if (draggingFurn){ undoStack.push(draggingFurn.start); redoStack.length=0; draggingFurn=null; controls.enabled=true; el.style.cursor=""; renderUI(); return; }
     if (!down) return; const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null;
-    if (moved>6 || state.step!=="railing") return;
+    if (moved>6) return;
     const hit=pickEdge(e); if (hit==null) return;
-    commit(()=>{ const s=new Set(state.disabledEdges); s.has(hit)?s.delete(hit):s.add(hit); state.disabledEdges=[...s]; });
+    if (state.step==="railing")
+      commit(()=>{ const s=new Set(state.disabledEdges); s.has(hit)?s.delete(hit):s.add(hit); state.disabledEdges=[...s]; });
+    else if (state.step==="walls")
+      commit(()=>{ state.wallEdge=hit; state.wallOn=true; });
   });
+}
+
+function pickFurniture(e){ setPointer(e); raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(furnitureGroups,true);
+  if(!hits.length) return null; let o=hits[0].object; while(o && !(o.userData&&o.userData.furn)) o=o.parent; return o; }
+function doFurnDrag(e){
+  setPointer(e); raycaster.setFromCamera(pointer,camera);
+  const topY=levelInfo()[0].topY, plane=new THREE.Plane(new THREE.Vector3(0,1,0), -topY), pt=new THREE.Vector3();
+  if(!raycaster.ray.intersectPlane(plane,pt)) return;
+  const poly=levelInfo()[0].poly, xs=poly.map(p=>p[0]), zs=poly.map(p=>p[1]);
+  const x=Math.max(Math.min(...xs)+1, Math.min(Math.max(...xs)-1, pt.x/FT));
+  const z=Math.max(Math.min(...zs)+1, Math.min(Math.max(...zs)-1, pt.z/FT));
+  state.furnPos={ ...state.furnPos, [draggingFurn.key]:[x,z] }; rebuildScene();
 }
 
 function doResize(e) {
@@ -780,10 +855,12 @@ function renderUI() {
   const gb=document.getElementById("gateBtn");
   gb.textContent = state.gate ? "✓ Gate added" : "⊏ Add a gate"; gb.classList.toggle("active", state.gate);
 
-  const wt=document.getElementById("wallToggleBtn");
+  const wt=document.getElementById("wallToggleBtn"), wm=document.getElementById("wallMoveBtn");
   wt.textContent = state.wallOn ? "✓ Wall added" : "＋ Add a wall"; wt.classList.toggle("active", state.wallOn);
+  wm.hidden = !state.wallOn;
   document.getElementById("doorCount").textContent = state.doors;
   document.getElementById("winCount").textContent = state.windows;
+  document.getElementById("nightBtn").classList.toggle("active", state.night);
 
   const i=STEP_INDEX[state.step];
   const next=document.getElementById("nextBtn"), back=document.getElementById("backBtn");
@@ -835,7 +912,7 @@ function registerEvents() {
     const opt=e.target.closest("[data-key]");
     if (opt){ const key=opt.dataset.key,val=opt.dataset.val;
       commit(()=>{
-        if (key==="shape"){ state.levels[0].shape=val; state.disabledEdges=[]; state.stairsEdge=null; state.gate=false; }
+        if (key==="shape"){ state.levels[0].shape=val; state.disabledEdges=[]; state.stairsEdge=null; state.gate=false; state.wallEdge=null; state.furnPos={}; pendingRefit=true; }
         else if (key==="product"){ state.product=val; state.topRail=PRODUCTS[val].defaultTopRail; }
         else state[key]=val;
       }); return;
@@ -859,8 +936,10 @@ function registerEvents() {
   document.getElementById("winPlus").addEventListener("click", ()=>clampDW("windows",1,6));
   document.getElementById("winMinus").addEventListener("click", ()=>clampDW("windows",-1,6));
 
-  document.getElementById("addLevelBtn").addEventListener("click", ()=>commit(()=>state.levels.push({ shape: state.levels[0].shape })));
-  document.getElementById("removeLevelBtn").addEventListener("click", ()=>commit(()=>state.levels.length=1));
+  document.getElementById("addLevelBtn").addEventListener("click", ()=>commit(()=>{ state.levels.push({ shape: state.levels[0].shape }); pendingRefit=true; }));
+  document.getElementById("removeLevelBtn").addEventListener("click", ()=>commit(()=>{ state.levels.length=1; pendingRefit=true; }));
+  document.getElementById("wallMoveBtn").addEventListener("click", ()=>commit(()=>{ const n=basePoly().length, cur=(state.wallEdge==null?backEdge(basePoly()):state.wallEdge); state.wallEdge=(cur+1)%n; state.wallOn=true; }));
+  document.getElementById("nightBtn").addEventListener("click", e=>{ commit(()=>state.night=!state.night); });
 
   document.getElementById("stairsBtn").addEventListener("click", ()=>commit(()=>{ state.stairsEdge = state.stairsEdge==null ? frontEdge() : null; }));
   document.getElementById("stairsRotBtn").addEventListener("click", ()=>commit(()=>{ const n=basePoly().length; state.stairsEdge=(state.stairsEdge+1)%n; }));
@@ -872,7 +951,7 @@ function registerEvents() {
 
   document.getElementById("undoBtn").addEventListener("click", undo);
   document.getElementById("redoBtn").addEventListener("click", redo);
-  document.getElementById("resetBtn").addEventListener("click", ()=>{ camera.position.set(6.5,5.2,11); controls.target.set(0,0.5,0); });
+  document.getElementById("resetBtn").addEventListener("click", ()=>{ camera.position.set(6.5,5.2,11); controls.target.set(0,0.5,0); pendingRefit=true; rebuildScene(); });
   document.getElementById("autorotBtn").addEventListener("click", e=>{ controls.autoRotate=!controls.autoRotate; e.currentTarget.classList.toggle("active",controls.autoRotate); });
   document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderer.render(scene,camera); const a=document.createElement("a"); a.download="kadenz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
   document.getElementById("uploadInput").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();

@@ -126,7 +126,9 @@
         <h3>House Wall</h3>
         <div class="level-row">
           <button class="ghost-btn" id="wallToggleBtn">＋ Add a wall</button>
+          <button class="ghost-btn" id="wallMoveBtn" hidden>↻ Move wall</button>
         </div>
+        <p class="hint">Click a deck edge in the preview to place the wall on that side.</p>
         <div class="options" id="wallModeOptions"></div>
         <h3>Cladding</h3>
         <div class="swatches" id="claddingOptions"></div>
@@ -143,7 +145,8 @@
       <div class="step-pane" id="stepFurniture" data-step="furniture" hidden>
         <h3>Add Furniture</h3>
         <div class="options" id="furnitureOptions"></div>
-        <p class="hint">Tap an item to place it on the deck. Tap again to remove.</p>
+        <p class="hint">Tap an item to add it (tap again to remove). <b>Drag any item in the
+           preview</b> to reposition it on the deck.</p>
       </div>
 
       <div class="summary" id="summary"></div>
@@ -183,7 +186,8 @@
         </label>
         <button class="ghost-btn" id="downloadBtn">⬇ Save view</button>
         <button class="ghost-btn" id="autorotBtn">↻ Auto-rotate</button>
-        <button class="ghost-btn" id="resetBtn">⟱ Reset camera</button>
+        <button class="ghost-btn" id="nightBtn">🌙 Night</button>
+        <button class="ghost-btn" id="resetBtn">⟱ Fit view</button>
       </div>
     </div>
   </main>

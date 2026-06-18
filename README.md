@@ -27,7 +27,10 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
 - **Stairs** — staircase (treads, risers, stringers) descending from any deck edge; move it around the perimeter; optional landing **platform**; step-board & riser color pickers
 - **Walls** — attached/detached house wall with cladding (Red/Blue/Green/White/Brown/Yellow/Gray/Belmont brick) and adjustable **door**/**window** counts
-- **Furniture** — table & chairs, lounge, planter, grill, umbrella placed on the deck
+- **Furniture** — table & chairs, lounge, planter, grill, umbrella; **drag any item in the 3D view to reposition it**
+- **Wall edge** — click a deck edge (or Move wall) to choose which side the house wall sits on
+- **Night mode** — 🌙 toggle dims the scene and the Solar/Halo caps cast real warm point-light pools
+- **Auto-fit camera** — frames the whole deck on load and when shape/levels change; Fit view re-frames any time
 - **Per-edge railing toggle** — **click an edge in the 3D view** to add/remove railing on just that side (e.g. leave the house side open)
 - **Gate** — drop an openable gate section (frame + handle) into the railing, at the stairs/front edge
 - **Levels** — add a stacked second tier that rests on the base deck
