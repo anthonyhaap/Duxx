@@ -28,15 +28,26 @@ export const SHAPES = {
   t:       { label: "T-Shaped", poly: [[-3,-6],[3,-6],[3,0],[8,0],[8,5],[-8,5],[-8,0],[-3,0]] },
 };
 
-/* DUXXBAK® Composite Decking by AmeriLux International — colors, profiles & finishes */
+/* DUXXBAK® Composite Decking by AmeriLux International — real colors grouped by finish */
 export const DECKING = {
-  islandMist: { name: "Island Mist", base: "#9aa19a" },
-  rainier:    { name: "Rainier",     base: "#8b9094" },
-  carmel:     { name: "Carmel",      base: "#a06f3e" },
-  biscayne:   { name: "Biscayne",    base: "#7c5a3c" },
-  jasper:     { name: "Jasper",      base: "#5a3b30" },
-  saltFlat:   { name: "Salt Flat",   base: "#c9bda4" },
-  hatteras:   { name: "Hatteras",    base: "#6e6a61" },
+  // Armor Cap
+  boardwalkGrey: { name: "Boardwalk Grey", base: "#8f8d86", finish: "armorcap" },
+  warmCedar:     { name: "Warm Cedar",     base: "#9c6b3f", finish: "armorcap" },
+  sedonaRed:     { name: "Sedona Red",     base: "#7d3a2b", finish: "armorcap" },
+  darkMahogany:  { name: "Dark Mahogany",  base: "#4a2c22", finish: "armorcap" },
+  blackWalnut:   { name: "Black Walnut",   base: "#37291f", finish: "armorcap" },
+  // Traction
+  coolSand:      { name: "Cool Sand",      base: "#c9b896", finish: "traction" },
+  driftwood:     { name: "Driftwood",      base: "#9a9286", finish: "traction" },
+  cedar:         { name: "Cedar",          base: "#9c6b3f", finish: "traction" },
+  mahogany:      { name: "Mahogany",       base: "#6e3b2c", finish: "traction" },
+  walnut:        { name: "Walnut",         base: "#5a4332", finish: "traction" },
+  copperCanyon:  { name: "Copper Canyon",  base: "#9a5a33", finish: "traction" },
+  rusticRed:     { name: "Rustic Red",     base: "#7e3a2c", finish: "traction" },
+  // Traction Wood Grain
+  riverStone:    { name: "River Stone",    base: "#8a8580", finish: "tractionWG" },
+  treeBark:      { name: "Tree Bark",      base: "#5b4a3a", finish: "tractionWG" },
+  tannedLeather: { name: "Tanned Leather", base: "#8a5a38", finish: "tractionWG" },
 };
 
 /* DUXXBAK® board profiles — names, descriptions and real face widths/thicknesses (inches) */
@@ -54,9 +65,26 @@ export const DECK_PROFILES = {
 };
 
 export const DECK_FINISHES = {
-  armorcap: { name: "ArmorCap",  desc: "Wood-grain embossed", rough: 0.8 },
-  traction: { name: "Traction",  desc: "Natural brush, extra grip", rough: 0.95 },
+  armorcap:   { name: "Armor Cap",           desc: "Wood-grain embossed cap", rough: 0.8 },
+  traction:   { name: "Traction",            desc: "Natural brush, extra grip", rough: 0.95 },
+  tractionWG: { name: "Traction Wood Grain", desc: "Brushed wood-grain", rough: 0.88 },
 };
+
+/* DUXXBAK® 2026 dealer list — $/linear ft (estimate use only), job-lot tier */
+export const PRICE_LF = {
+  duxxbak:   { armorcap: 6.68, traction: 6.26, tractionWG: 7.66 },
+  optima:    { armorcap: 5.62, traction: 5.42, tractionWG: 5.62 },
+  optimaG:   { armorcap: 5.62, traction: 5.42, tractionWG: 5.62 },
+  optimaLT:  { armorcap: 4.51, traction: 4.13, tractionWG: 4.51 },
+  optimaLTG: { armorcap: 4.51, traction: 4.13, tractionWG: 4.51 },
+  iDekkS4S:  { armorcap: 6.87, traction: 6.26, tractionWG: 6.87 },
+  iDekkTG:   { armorcap: 6.87, traction: 6.26, tractionWG: 6.87 },
+  iDekkHD:   { armorcap: 6.93, traction: 6.93, tractionWG: 8.91 },
+  iDekkHDTG: { armorcap: 6.93, traction: 6.93, tractionWG: 8.91 },
+  commercial:{ armorcap: 6.87, traction: 6.26, tractionWG: 6.87 },
+};
+export const FASCIA_LF = { traction: 8.44, tractionWG: 9.56 };   // 1'×12' board ÷ 12
+const CLIP_BAG = 42.31, SCREW_BAG = 27.52;
 
 export const BOARD_LENGTHS = { "12": { name: "12 ft" }, "16": { name: "16 ft" }, "20": { name: "20 ft" } };
 
@@ -152,7 +180,7 @@ function defaultState() {
     levels: [{ shape: "square" }],
     size: { w: 14, d: 12 },          // overall footprint (ft)
     heightIn: 39,                    // base deck height (in)
-    decking: "islandMist", fascia: "jasper", deckDir: "horizontal",
+    decking: "warmCedar", fascia: "blackWalnut", deckDir: "horizontal",
     deckProfile: "duxxbak", deckFinish: "armorcap", boardLength: "16",
     disabledEdges: [],               // base-level edges with railing removed
     stairsEdge: null,                // base-level edge index with stairs
@@ -848,8 +876,7 @@ function shapeThumb(poly,id){
 function buildStaticUI() {
   document.getElementById("shapeGrid").innerHTML = Object.entries(SHAPES).map(([k,s])=>
     `<button class="shape-thumb" data-key="shape" data-val="${k}">${shapeThumb(s.poly,k)}<span>${s.label}</span></button>`).join("");
-  document.getElementById("deckingOptions").innerHTML = Object.entries(DECKING).map(([k,v])=>
-    `<button class="swatch" data-key="decking" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
+  renderColorOptions();
   document.getElementById("dirOptions").innerHTML = Object.entries(DECK_DIRS).map(([k,v])=>
     `<button class="opt dir-opt" data-key="deckDir" data-val="${k}"><span class="dir-ic">${dirIcon(k)}</span>${v.name}</button>`).join("");
   document.getElementById("profileOptions").innerHTML = Object.entries(DECK_PROFILES).map(([k,v])=>
@@ -892,7 +919,15 @@ function buildStaticUI() {
     `<button class="opt" data-furn="${k}">${v.name}</button>`).join("");
 }
 
+function firstColorOf(finish){ return Object.keys(DECKING).find(k=>DECKING[k].finish===finish); }
+function renderColorOptions() {
+  const el=document.getElementById("deckingOptions"); if(!el) return;
+  el.innerHTML = Object.entries(DECKING).filter(([,v])=>v.finish===state.deckFinish).map(([k,v])=>
+    `<button class="swatch" data-key="decking" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
+}
+
 function renderUI() {
+  renderColorOptions();
   document.querySelectorAll(".step-pane").forEach(p=>p.hidden = p.dataset.step!==state.step);
   document.querySelectorAll(".step").forEach(b=>b.classList.toggle("active", b.dataset.step===state.step));
   document.querySelectorAll("[data-key]").forEach(el=>el.classList.toggle("active", state[el.dataset.key]===el.dataset.val));
@@ -930,8 +965,7 @@ function renderUI() {
 
   const i=STEP_INDEX[state.step];
   const next=document.getElementById("nextBtn"), back=document.getElementById("backBtn");
-  next.hidden = i===STEPS.length-1;
-  if (!next.hidden) next.textContent = `Next: ${STEPS[i+1][1]} ▶`;
+  next.textContent = i===STEPS.length-1 ? "💲 Get an unofficial quote" : `Next: ${STEPS[i+1][1]} ▶`;
   back.hidden = i===0;
 
   document.getElementById("undoBtn").disabled=!undoStack.length;
@@ -972,6 +1006,70 @@ function renderSummary() {
 }
 
 /* ============================================================
+   Unofficial estimate (DUXXBAK 2026 dealer pricing)
+   ============================================================ */
+let lastQuoteText = "";
+const money = n => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function polyArea(poly){ let a=0; for(let i=0;i<poly.length;i++){const[x1,z1]=poly[i],[x2,z2]=poly[(i+1)%poly.length]; a+=x1*z2-x2*z1;} return Math.abs(a)/2; }
+
+function estimate() {
+  const lv=levelInfo(); let area=0, perim=0, railLF=0;
+  lv.forEach((l,idx)=>{
+    area += polyArea(l.poly);
+    for (let i=0;i<l.poly.length;i++){
+      const [ax,az]=l.poly[i],[bx,bz]=l.poly[(i+1)%l.poly.length];
+      const len=Math.hypot(bx-ax,bz-az); perim+=len;
+      if (!(idx===0 && state.disabledEdges.includes(i))){ let rl=len; if(idx===0){const op=openingForEdge(i); if(op) rl=Math.max(0,rl-op.width/FT);} railLF+=rl; }
+    }
+  });
+  const boardWft=DECK_PROFILES[state.deckProfile].w/12;
+  return { area:Math.round(area), perim:Math.round(perim), railLF:Math.round(railLF),
+    posts:Math.round(railLF/6)+lv.reduce((s,l)=>s+l.poly.length,0), deckLF:Math.round(area/boardWft*1.10) };
+}
+
+function pricing(est) {
+  const lf=PRICE_LF[state.deckProfile][state.deckFinish], items=[];
+  const deck=est.deckLF*lf;
+  items.push([`Decking — ${DECK_PROFILES[state.deckProfile].name} (${DECK_FINISHES[state.deckFinish].name})`, `${est.deckLF} lf × ${money(lf)}`, deck]);
+  const ffin=state.deckFinish==="tractionWG"?"tractionWG":"traction", fasc=FASCIA_LF[ffin], fascia=est.perim*fasc;
+  items.push([`Fascia board (${DECK_FINISHES[ffin].name})`, `${est.perim} lf × ${money(fasc)}`, fascia]);
+  let total=deck+fascia;
+  if (state.deckProfile==="duxxbak" && state.deckFinish==="armorcap"){ const bags=Math.ceil(est.area*2.3/50), c=bags*CLIP_BAG; items.push([`Mounting clips (required)`, `${bags} × 50-ct bag`, c]); total+=c; }
+  const sbags=Math.ceil(est.area*2.4/185), s=sbags*SCREW_BAG; items.push([`Fasteners (#7 × 2.5")`, `${sbags} × 185-ct bag`, s]); total+=s;
+  return { items, total };
+}
+
+function openQuote() {
+  const est=estimate(), pr=pricing(est);
+  const cfg=[
+    ["Deck shape", SHAPES[state.levels[0].shape].label],
+    ["Footprint", `${state.size.w}' × ${state.size.d}' · ~${est.area} sq ft`],
+    ["Levels", state.levels.length],
+    ["Profile", DECK_PROFILES[state.deckProfile].name],
+    ["Color / Finish", `${DECKING[state.decking].name} · ${DECK_FINISHES[state.deckFinish].name}`],
+    ["Railing", `${PRODUCTS[state.product].name} · ${INFILLS[state.infill].name} · ~${est.railLF} ft, ~${est.posts} posts`],
+  ];
+  const body=document.getElementById("quoteBody");
+  body.innerHTML =
+    `<div class="quote-summary">`+cfg.map(([k,v])=>`<div class="row"><span>${k}</span><span>${v}</span></div>`).join("")+`</div>`+
+    `<table class="price-table"><thead><tr><th>Item</th><th>Qty</th><th>Est.</th></tr></thead><tbody>`+
+      pr.items.map(([n,q,v])=>`<tr><td>${n}</td><td>${q}</td><td>${money(v)}</td></tr>`).join("")+
+      `<tr class="price-total"><td>DUXXBAK® materials subtotal</td><td></td><td>${money(pr.total)}</td></tr>`+
+    `</tbody></table>`+
+    `<p class="quote-note">Unofficial estimate — linear-foot pricing is for estimate use only (DUXXBAK® 2026 dealer list).
+       Excludes railing/stairs/walls, labor, freight, skid/min-order fees, and tax. Contact your Account Manager for a firm quote.</p>`;
+  lastQuoteText =
+    `TWAN & DAK'S RAILZ — UNOFFICIAL ESTIMATE\n${new Date().toLocaleString()}\n\n`+
+    cfg.map(([k,v])=>`${k.padEnd(16)} ${v}`).join("\n")+`\n\nDUXXBAK® MATERIALS (estimate use only)\n`+
+    pr.items.map(([n,q,v])=>`  ${n}\n    ${q} = ${money(v)}`).join("\n")+
+    `\n  ---\n  Subtotal: ${money(pr.total)}\n\nExcludes railing/stairs/walls, labor, freight, fees and tax.`;
+  document.getElementById("quoteModal").hidden=false;
+}
+function closeQuote(){ document.getElementById("quoteModal").hidden=true; }
+function downloadQuote(){ const b=new Blob([lastQuoteText],{type:"text/plain"}), u=URL.createObjectURL(b);
+  const a=document.createElement("a"); a.href=u; a.download="twan-and-daks-railz-estimate.txt"; a.click(); URL.revokeObjectURL(u); }
+
+/* ============================================================
    Events
    ============================================================ */
 function registerEvents() {
@@ -981,6 +1079,7 @@ function registerEvents() {
       commit(()=>{
         if (key==="shape"){ state.levels[0].shape=val; state.disabledEdges=[]; state.stairsEdge=null; state.gate=false; state.wallEdge=null; state.furnPos={}; state.furnRot={}; pendingRefit=true; }
         else if (key==="product"){ state.product=val; state.topRail=PRODUCTS[val].defaultTopRail; }
+        else if (key==="deckFinish"){ state.deckFinish=val; if(DECKING[state.decking].finish!==val) state.decking=firstColorOf(val); }
         else state[key]=val;
       }); return;
     }
@@ -991,8 +1090,12 @@ function registerEvents() {
 
   const go=delta=>{ const i=STEP_INDEX[state.step]+delta; if(i<0||i>=STEPS.length)return; commit(()=>state.step=STEPS[i][0]); };
   document.getElementById("nextBtn").addEventListener("click", e=>{ e.preventDefault();
-    if (STEP_INDEX[state.step]<STEPS.length-1) go(1); });
+    if (STEP_INDEX[state.step]===STEPS.length-1) openQuote(); else go(1); });
   document.getElementById("backBtn").addEventListener("click", ()=>go(-1));
+  document.getElementById("quoteClose").addEventListener("click", closeQuote);
+  document.getElementById("quoteModal").addEventListener("click", e=>{ if(e.target.id==="quoteModal") closeQuote(); });
+  document.getElementById("quoteDownload").addEventListener("click", downloadQuote);
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeQuote(); });
 
   document.getElementById("platformBtn").addEventListener("click", ()=>commit(()=>state.stairPlatform=!state.stairPlatform));
   document.getElementById("wallToggleBtn").addEventListener("click", ()=>commit(()=>state.wallOn=!state.wallOn));
