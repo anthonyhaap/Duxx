@@ -351,7 +351,8 @@ function buildDeckLevel(parent, poly, topY, plankMat, fasciaMat, woodMat, suppor
   poly.forEach(([x,z],i)=>{ const X=x*FT,Z=z*FT; i?shape.lineTo(X,Z):shape.moveTo(X,Z); });
   shape.closePath();
   const geo = new THREE.ExtrudeGeometry(shape,{ depth:SLAB, bevelEnabled:false });
-  geo.rotateX(-Math.PI/2); geo.computeBoundingBox(); geo.translate(0, topY-geo.boundingBox.max.y, 0);
+  geo.rotateX(Math.PI/2);   // +90° so deck world-z matches polygon z (railing/stairs/wall/labels all use poly z directly)
+  geo.computeBoundingBox(); geo.translate(0, topY-geo.boundingBox.max.y, 0);
   const slab = new THREE.Mesh(geo,[plankMat,fasciaMat]); slab.castShadow=true; slab.receiveShadow=true; parent.add(slab);
 
   const postT=0.33*FT, deckBottom=topY-SLAB;

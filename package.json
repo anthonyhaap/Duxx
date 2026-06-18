@@ -9,6 +9,8 @@
     "dev": "python3 -m http.server 5173"
   },
   "dependencies": {
+    "gl": "^8.1.6",
+    "pngjs": "^7.0.0",
     "three": "^0.160.0"
   }
 }
