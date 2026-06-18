@@ -74,10 +74,20 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow); border: 1px solid var(--line);
   background: #0a0d12;
 }
-.stage svg, .custom-photo {
-  position: absolute; inset: 0; width: 100%; height: 100%;
+.stage canvas {
+  position: absolute; inset: 0; width: 100% !important; height: 100% !important;
+  display: block; cursor: grab;
 }
-.custom-photo { object-fit: cover; }
+.stage canvas:active { cursor: grabbing; }
+.stage-loading {
+  position: absolute; inset: 0; z-index: 4; display: flex; align-items: center;
+  justify-content: center; color: var(--muted); font-size: 14px; letter-spacing: .5px;
+}
+.stage-hint {
+  position: absolute; right: 14px; bottom: 14px; z-index: 5;
+  background: rgba(10,13,18,.6); border: 1px solid var(--line); color: var(--muted);
+  font-size: 11px; padding: 6px 11px; border-radius: 999px; pointer-events: none;
+}
 .stage-badge {
   position: absolute; left: 14px; bottom: 14px; z-index: 5;
   background: rgba(10,13,18,.7); backdrop-filter: blur(6px);
@@ -92,7 +102,6 @@ a { color: inherit; text-decoration: none; }
   border: 2px solid transparent; overflow: hidden; position: relative;
   background: #0a0d12;
 }
-.scene-thumb svg { width: 100%; height: 100%; display: block; }
 .scene-thumb.active { border-color: var(--accent); }
 .scene-thumb span {
   position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; text-align: center;
@@ -108,6 +117,7 @@ a { color: inherit; text-decoration: none; }
 .upload-btn { background: var(--accent); color: #1a1407; border-color: transparent; font-weight: 600; }
 .upload-btn:hover { background: var(--accent-2); }
 .ghost-btn:hover { border-color: var(--accent); }
+.ghost-btn.active { border-color: var(--accent); background: rgba(200,162,74,.16); color: var(--text); }
 
 /* Panel */
 .panel {
