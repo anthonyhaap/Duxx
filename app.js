@@ -1,7 +1,7 @@
 /* ============================================================
-   Twans Railz 3D Deck Visualizer — replica
+   Twan & Dak's Railz 3D Deck Visualizer — replica
    Step 1: deck shape / size / height / levels / stairs (studio grid)
-   Step 2: Twans Railz railing around the perimeter (+ per-edge toggle, gate)
+   Step 2: Twan & Dak's Railz railing around the perimeter (+ per-edge toggle, gate)
    ============================================================ */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -55,11 +55,11 @@ export const DECK_FINISHES = {
 export const BOARD_LENGTHS = { "12": { name: "12 ft" }, "16": { name: "16 ft" }, "20": { name: "20 ft" } };
 
 export const PRODUCTS = {
-  classic:    { name: "Twans Railz Classic",    desc: "Budget-friendly, sturdy, easy install.",
+  classic:    { name: "Twan & Dak's Railz Classic",    desc: "Budget-friendly, sturdy, easy install.",
                 hint: "Clean flat top rail with economical components — a great all-rounder.", railWeight: 1,    defaultTopRail: "flat" },
-  elegance:   { name: "Twans Railz Elegance",   desc: "Refined balance of strength & style.",
+  elegance:   { name: "Twan & Dak's Railz Elegance",   desc: "Refined balance of strength & style.",
                 hint: "Slimmer profile with an internally-mounted top rail for a sleek silhouette.", railWeight: 0.9, defaultTopRail: "round" },
-  commercial: { name: "Twans Railz Commercial", desc: "Lab-tested for multi-family use.",
+  commercial: { name: "Twan & Dak's Railz Commercial", desc: "Lab-tested for multi-family use.",
                 hint: "Heaviest-duty line with reinforced posts for code-driven projects.", railWeight: 1.2,  defaultTopRail: "flat" },
 };
 
@@ -1015,7 +1015,7 @@ function registerEvents() {
   document.getElementById("redoBtn").addEventListener("click", redo);
   document.getElementById("resetBtn").addEventListener("click", ()=>{ camera.position.set(6.5,5.2,11); controls.target.set(0,0.5,0); pendingRefit=true; rebuildScene(); });
   document.getElementById("autorotBtn").addEventListener("click", e=>{ controls.autoRotate=!controls.autoRotate; e.currentTarget.classList.toggle("active",controls.autoRotate); });
-  document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderFrame(); const a=document.createElement("a"); a.download="twans-railz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
+  document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderFrame(); const a=document.createElement("a"); a.download="twan-and-daks-railz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
   document.getElementById("uploadInput").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
     rd.onload=ev=>new THREE.TextureLoader().load(ev.target.result, tex=>{ tex.colorSpace=THREE.SRGBColorSpace; if(photoTexture)photoTexture.dispose(); photoTexture=tex; scene.background=tex; scene.fog=null; }); rd.readAsDataURL(f); });
 }

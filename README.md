@@ -1,6 +1,6 @@
-# Twans Railz — 3D Deck Visualizer
+# Twan & Dak's Railz — 3D Deck Visualizer
 
-An interactive **3D deck designer** for **Twans Railz** aluminum railings and
+An interactive **3D deck designer** for **Twan & Dak's Railz** aluminum railings and
 **DUXXBAK® Composite Decking** (AmeriLux International). It's a multi-step flow in a
 studio grid environment:
 

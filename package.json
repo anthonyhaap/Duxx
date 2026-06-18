@@ -1,9 +1,9 @@
 {
-  "name": "twans-railz-deck-visualizer",
+  "name": "twan-and-daks-railz-deck-visualizer",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Twans Railz — interactive 3D deck visualizer with DUXXBAK composite decking and aluminum railings.",
+  "description": "Twan & Dak's Railz — interactive 3D deck visualizer with DUXXBAK composite decking and aluminum railings.",
   "scripts": {
     "start": "python3 -m http.server 5173",
     "dev": "python3 -m http.server 5173"
