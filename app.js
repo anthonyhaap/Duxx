@@ -194,6 +194,7 @@ function defaultState() {
     furnPos: {},        // key -> [xFt, zFt]
     furnRot: {},        // key -> radians
     night: false, bloom: 0.6, bloomRadius: 0.6, bloomThreshold: 0.72,
+    railRate: 35,       // editable $/linear ft for railing in the estimate
   };
 }
 export let state = defaultState();
@@ -1036,10 +1037,12 @@ function pricing(est) {
   let total=deck+fascia;
   if (state.deckProfile==="duxxbak" && state.deckFinish==="armorcap"){ const bags=Math.ceil(est.area*2.3/50), c=bags*CLIP_BAG; items.push([`Mounting clips (required)`, `${bags} × 50-ct bag`, c]); total+=c; }
   const sbags=Math.ceil(est.area*2.4/185), s=sbags*SCREW_BAG; items.push([`Fasteners (#7 × 2.5")`, `${sbags} × 185-ct bag`, s]); total+=s;
+  const rail=est.railLF*state.railRate;
+  items.push([`Railing — ${PRODUCTS[state.product].name}`, `${est.railLF} lf × ${money(state.railRate)}`, rail]); total+=rail;
   return { items, total };
 }
 
-function openQuote() {
+function renderQuoteBody() {
   const est=estimate(), pr=pricing(est);
   const cfg=[
     ["Deck shape", SHAPES[state.levels[0].shape].label],
@@ -1049,20 +1052,23 @@ function openQuote() {
     ["Color / Finish", `${DECKING[state.decking].name} · ${DECK_FINISHES[state.deckFinish].name}`],
     ["Railing", `${PRODUCTS[state.product].name} · ${INFILLS[state.infill].name} · ~${est.railLF} ft, ~${est.posts} posts`],
   ];
-  const body=document.getElementById("quoteBody");
-  body.innerHTML =
+  document.getElementById("quoteBody").innerHTML =
     `<div class="quote-summary">`+cfg.map(([k,v])=>`<div class="row"><span>${k}</span><span>${v}</span></div>`).join("")+`</div>`+
     `<table class="price-table"><thead><tr><th>Item</th><th>Qty</th><th>Est.</th></tr></thead><tbody>`+
       pr.items.map(([n,q,v])=>`<tr><td>${n}</td><td>${q}</td><td>${money(v)}</td></tr>`).join("")+
-      `<tr class="price-total"><td>DUXXBAK® materials subtotal</td><td></td><td>${money(pr.total)}</td></tr>`+
+      `<tr class="price-total"><td>Estimated project total</td><td></td><td>${money(pr.total)}</td></tr>`+
     `</tbody></table>`+
-    `<p class="quote-note">Unofficial estimate — linear-foot pricing is for estimate use only (DUXXBAK® 2026 dealer list).
-       Excludes railing/stairs/walls, labor, freight, skid/min-order fees, and tax. Contact your Account Manager for a firm quote.</p>`;
+    `<p class="quote-note">Unofficial tally — DUXXBAK® linear-foot pricing is for estimate use only (2026 dealer list);
+       the railing rate above is your editable estimate. Excludes stairs/walls, labor, freight, skid/min-order fees and tax.</p>`;
   lastQuoteText =
     `TWAN & DAK'S RAILZ — UNOFFICIAL ESTIMATE\n${new Date().toLocaleString()}\n\n`+
-    cfg.map(([k,v])=>`${k.padEnd(16)} ${v}`).join("\n")+`\n\nDUXXBAK® MATERIALS (estimate use only)\n`+
+    cfg.map(([k,v])=>`${k.padEnd(16)} ${v}`).join("\n")+`\n\nLINE ITEMS (estimate use only)\n`+
     pr.items.map(([n,q,v])=>`  ${n}\n    ${q} = ${money(v)}`).join("\n")+
-    `\n  ---\n  Subtotal: ${money(pr.total)}\n\nExcludes railing/stairs/walls, labor, freight, fees and tax.`;
+    `\n  ---\n  Estimated project total: ${money(pr.total)}\n\nExcludes stairs/walls, labor, freight, fees and tax.`;
+}
+function openQuote() {
+  const r=document.getElementById("railRate"); if(r) r.value=state.railRate;
+  renderQuoteBody();
   document.getElementById("quoteModal").hidden=false;
 }
 function closeQuote(){ document.getElementById("quoteModal").hidden=true; }
@@ -1095,6 +1101,7 @@ function registerEvents() {
   document.getElementById("quoteClose").addEventListener("click", closeQuote);
   document.getElementById("quoteModal").addEventListener("click", e=>{ if(e.target.id==="quoteModal") closeQuote(); });
   document.getElementById("quoteDownload").addEventListener("click", downloadQuote);
+  document.getElementById("railRate").addEventListener("input", e=>{ state.railRate=Math.max(0, +e.target.value||0); renderQuoteBody(); });
   document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeQuote(); });
 
   document.getElementById("platformBtn").addEventListener("click", ()=>commit(()=>state.stairPlatform=!state.stairPlatform));
