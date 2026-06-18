@@ -1,14 +1,14 @@
 :root {
-  --bg: #0e1116;
-  --panel: #161b22;
-  --panel-2: #1c232d;
-  --line: #2a3441;
-  --text: #e8edf3;
-  --muted: #9aa7b6;
-  --accent: #c8a24a;      /* warm aluminum/brass accent */
-  --accent-2: #e3c272;
+  --bg: #f4ecd8;          /* cream */
+  --panel: #fbf6ea;
+  --panel-2: #efe6d1;
+  --line: #ddd0b4;
+  --text: #1c1813;        /* near-black */
+  --muted: #6f6555;
+  --accent: #b8901f;      /* warm brass accent (darkened for cream) */
+  --accent-2: #d4a93a;
   --radius: 14px;
-  --shadow: 0 12px 40px rgba(0,0,0,.45);
+  --shadow: 0 10px 30px rgba(90,70,30,.16);
 }
 
 * { box-sizing: border-box; }
@@ -16,7 +16,7 @@
 html, body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 80% -10%, #1b2532 0%, transparent 60%),
+    radial-gradient(1200px 600px at 80% -10%, #fbf3df 0%, transparent 60%),
     var(--bg);
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -31,7 +31,7 @@ a { color: inherit; text-decoration: none; }
   padding: 18px clamp(16px, 4vw, 48px);
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 20;
-  background: rgba(14,17,22,.82); backdrop-filter: blur(10px);
+  background: rgba(248,242,228,.85); backdrop-filter: blur(10px);
 }
 .brand { display: flex; flex-direction: column; line-height: 1; }
 .brand-mark {
@@ -73,7 +73,7 @@ a { color: inherit; text-decoration: none; }
   max-height: calc(100vh - 150px);
   border-radius: var(--radius); overflow: hidden;
   box-shadow: var(--shadow); border: 1px solid var(--line);
-  background: #0a0d12;
+  background: #e3d9c2;
 }
 .stage canvas {
   position: absolute; inset: 0; width: 100% !important; height: 100% !important;
@@ -86,7 +86,7 @@ a { color: inherit; text-decoration: none; }
 }
 .stage-hint {
   position: absolute; right: 14px; bottom: 14px; z-index: 5;
-  background: rgba(10,13,18,.6); border: 1px solid var(--line); color: var(--muted);
+  background: rgba(10,13,18,.6); border: 1px solid rgba(255,255,255,.18); color: rgba(255,255,255,.82);
   font-size: 11px; padding: 6px 11px; border-radius: 999px; pointer-events: none;
 }
 .dim-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
@@ -98,7 +98,7 @@ a { color: inherit; text-decoration: none; }
 .stage-badge {
   position: absolute; left: 14px; bottom: 14px; z-index: 5;
   background: rgba(10,13,18,.7); backdrop-filter: blur(6px);
-  border: 1px solid var(--line); color: var(--text);
+  border: 1px solid rgba(255,255,255,.18); color: #fff;
   font-size: 12px; letter-spacing: .3px; padding: 7px 12px; border-radius: 999px;
 }
 
@@ -288,9 +288,9 @@ a { color: inherit; text-decoration: none; }
 /* ---------- DUXXBAK product banner ---------- */
 .product-banner {
   background: linear-gradient(120deg, #1a2a1f, #233b2b); border: 1px solid #2f5740;
-  border-radius: 10px; padding: 12px 14px; margin: 4px 0 14px; font-size: 13px; color: var(--text);
+  border-radius: 10px; padding: 12px 14px; margin: 4px 0 14px; font-size: 13px; color: #eaf2ea;
 }
-.product-banner small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.product-banner small { display: block; color: #9fc2a8; font-size: 11px; margin-top: 2px; }
 .product-brand {
   font-family: "Oswald", sans-serif; font-weight: 700; letter-spacing: 1px; color: #6fd08c;
 }
