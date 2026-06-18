@@ -140,7 +140,7 @@ function defaultState() {
     furniture: { table: false, lounge: false, planter: false, grill: false, umbrella: false },
     furnPos: {},        // key -> [xFt, zFt]
     furnRot: {},        // key -> radians
-    night: false,
+    night: false, bloom: 0.6,
   };
 }
 export let state = defaultState();
@@ -233,7 +233,8 @@ function initThree() {
     if (renderer.capabilities.isWebGL2) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      bloomPass = new UnrealBloomPass(new THREE.Vector2(stage.clientWidth, stage.clientHeight), 0.85, 0.5, 0.82);
+      // strength comes from state.bloom (live Glow slider); low threshold so only the warm caps/lights bloom
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(stage.clientWidth, stage.clientHeight), state.bloom, 0.6, 0.72);
       composer.addPass(bloomPass);
       composer.addPass(new OutputPass());
     }
@@ -888,6 +889,10 @@ function renderUI() {
   document.getElementById("doorCount").textContent = state.doors;
   document.getElementById("winCount").textContent = state.windows;
   document.getElementById("nightBtn").classList.toggle("active", state.night);
+  const gc=document.getElementById("glowCtl"); gc.hidden=!state.night;
+  const gs=document.getElementById("glowSlider"); if(+gs.value!==state.bloom) gs.value=state.bloom;
+  document.getElementById("glowVal").textContent=(+state.bloom).toFixed(2);
+  if (bloomPass) bloomPass.strength=state.bloom;
 
   const i=STEP_INDEX[state.step];
   const next=document.getElementById("nextBtn"), back=document.getElementById("backBtn");
@@ -967,6 +972,9 @@ function registerEvents() {
   document.getElementById("removeLevelBtn").addEventListener("click", ()=>commit(()=>{ state.levels.length=1; pendingRefit=true; }));
   document.getElementById("wallMoveBtn").addEventListener("click", ()=>commit(()=>{ const n=basePoly().length, cur=(state.wallEdge==null?backEdge(basePoly()):state.wallEdge); state.wallEdge=(cur+1)%n; state.wallOn=true; }));
   document.getElementById("nightBtn").addEventListener("click", e=>{ commit(()=>state.night=!state.night); });
+  const glow=document.getElementById("glowSlider");
+  glow.addEventListener("input", ()=>{ state.bloom=+glow.value; if(bloomPass) bloomPass.strength=state.bloom;
+    document.getElementById("glowVal").textContent=(+glow.value).toFixed(2); });
 
   document.getElementById("stairsBtn").addEventListener("click", ()=>commit(()=>{ state.stairsEdge = state.stairsEdge==null ? frontEdge() : null; }));
   document.getElementById("stairsRotBtn").addEventListener("click", ()=>commit(()=>{ const n=basePoly().length; state.stairsEdge=(state.stairsEdge+1)%n; }));
