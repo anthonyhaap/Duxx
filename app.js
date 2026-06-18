@@ -5,6 +5,10 @@
    ============================================================ */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 const FT = 0.30;                 // world units per foot
 const SLAB = 0.9 * FT;           // deck slab thickness
@@ -114,7 +118,7 @@ export const FURNITURE = {
   umbrella: { name: "Umbrella" },
 };
 
-export const STEPS = [["shape","Shape"],["railing","Railing"],["stairs","Stairs"],["walls","Walls"],["furniture","Furniture"]];
+export const STEPS = [["shape","Shape"],["decking","Decking"],["railing","Railing"],["stairs","Stairs"],["walls","Walls"],["furniture","Furniture"]];
 const STEP_INDEX = Object.fromEntries(STEPS.map(([k],i)=>[k,i]));
 
 /* ---------- State + history ---------- */
@@ -135,6 +139,7 @@ function defaultState() {
     wallOn: false, wallMode: "attached", wallEdge: null, cladding: "white", doors: 1, windows: 2,
     furniture: { table: false, lounge: false, planter: false, grill: false, umbrella: false },
     furnPos: {},        // key -> [xFt, zFt]
+    furnRot: {},        // key -> radians
     night: false,
   };
 }
@@ -182,6 +187,7 @@ function openingForEdge(i) {
    ============================================================ */
 const stage = typeof document !== "undefined" ? document.getElementById("stage") : null;
 let renderer, scene, camera, controls, sun, worldGroup, photoTexture = null, skyTexture = null;
+let composer = null, bloomPass = null;
 const raycaster = typeof THREE !== "undefined" ? new THREE.Raycaster() : null;
 const pointer = { x: 0, y: 0 };
 let edgeSelectors = [], hoveredSel = null;
@@ -221,13 +227,26 @@ function initThree() {
   rebuildScene();
   bindCanvasPointer();
 
+  // bloom composer (night only, so daytime colours are untouched).
+  // Needs WebGL2 half-float targets; falls back to plain render otherwise.
+  try {
+    if (renderer.capabilities.isWebGL2) {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(stage.clientWidth, stage.clientHeight), 0.85, 0.5, 0.82);
+      composer.addPass(bloomPass);
+      composer.addPass(new OutputPass());
+    }
+  } catch (e) { composer = null; }
+
   window.addEventListener("resize", onResize);
   if (window.ResizeObserver) new ResizeObserver(onResize).observe(stage);
   const l = document.getElementById("loading"); if (l) l.remove();
   animate();
 }
 
-function onResize() { const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); }
+function onResize() { const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); if(composer) composer.setSize(w,h); }
+function renderFrame() { if (state.night && composer) composer.render(); else renderer.render(scene, camera); }
 
 /* fit the camera so the whole deck sits comfortably in the frame */
 function fitCameraToDeck(poly, topY) {
@@ -259,7 +278,7 @@ function applyEnvironment() {
     if (!photoTexture){ scene.background=skyTexture; scene.fog=new THREE.Fog(0xb1c1d0,14,52); }
   }
 }
-function animate() { requestAnimationFrame(animate); controls.update(); updateDimLabels(); renderer.render(scene, camera); }
+function animate() { requestAnimationFrame(animate); controls.update(); updateDimLabels(); renderFrame(); }
 
 /* ---------- on-canvas dimension labels ---------- */
 function createDimPool() {
@@ -507,6 +526,7 @@ export function buildFurniture(parent, poly, deckTopY) {
     if (!f[key]) continue;
     const pos = state.furnPos[key] || [C[0]+FURN_DEFAULTS[key][0], C[1]+FURN_DEFAULTS[key][1]];
     const g=new THREE.Group(); g.userData={ furn:key }; g.position.set(pos[0]*FT, deckTopY, pos[1]*FT);
+    g.rotation.y = state.furnRot[key] || 0;
     const cyl=(r,h,col,x,y,z,ry)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,18), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); if(ry)m.rotation.z=ry; m.castShadow=true; g.add(m); return m; };
     const box=(w,h,d,col,x,y,z,rz)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); m.position.set(x,y,z); if(rz)m.rotation.z=rz; m.castShadow=true; g.add(m); return m; };
 
@@ -734,6 +754,13 @@ function bindCanvasPointer() {
     else if (state.step==="walls")
       commit(()=>{ state.wallEdge=hit; state.wallOn=true; });
   });
+
+  el.addEventListener("dblclick", e=>{       // double-click a furniture item to rotate it 45°
+    if (state.step!=="furniture") return;
+    const fg=pickFurniture(e); if(!fg) return;
+    const k=fg.userData.furn;
+    commit(()=>{ state.furnRot={ ...state.furnRot, [k]: ((state.furnRot[k]||0)+Math.PI/4)%(Math.PI*2) }; });
+  });
 }
 
 function pickFurniture(e){ setPointer(e); raycaster.setFromCamera(pointer,camera);
@@ -795,7 +822,7 @@ function buildStaticUI() {
   document.getElementById("deckingOptions").innerHTML = Object.entries(DECKING).map(([k,v])=>
     `<button class="swatch" data-key="decking" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
   document.getElementById("dirOptions").innerHTML = Object.entries(DECK_DIRS).map(([k,v])=>
-    `<button class="opt" data-key="deckDir" data-val="${k}">${v.name}</button>`).join("");
+    `<button class="opt dir-opt" data-key="deckDir" data-val="${k}"><span class="dir-ic">${dirIcon(k)}</span>${v.name}</button>`).join("");
   document.getElementById("fasciaOptions").innerHTML = Object.entries(DECKING).map(([k,v])=>
     `<button class="swatch" data-key="fascia" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
   document.getElementById("postStyleOptions").innerHTML = Object.entries(POST_STYLES).map(([k,v])=>
@@ -912,7 +939,7 @@ function registerEvents() {
     const opt=e.target.closest("[data-key]");
     if (opt){ const key=opt.dataset.key,val=opt.dataset.val;
       commit(()=>{
-        if (key==="shape"){ state.levels[0].shape=val; state.disabledEdges=[]; state.stairsEdge=null; state.gate=false; state.wallEdge=null; state.furnPos={}; pendingRefit=true; }
+        if (key==="shape"){ state.levels[0].shape=val; state.disabledEdges=[]; state.stairsEdge=null; state.gate=false; state.wallEdge=null; state.furnPos={}; state.furnRot={}; pendingRefit=true; }
         else if (key==="product"){ state.product=val; state.topRail=PRODUCTS[val].defaultTopRail; }
         else state[key]=val;
       }); return;
@@ -953,7 +980,7 @@ function registerEvents() {
   document.getElementById("redoBtn").addEventListener("click", redo);
   document.getElementById("resetBtn").addEventListener("click", ()=>{ camera.position.set(6.5,5.2,11); controls.target.set(0,0.5,0); pendingRefit=true; rebuildScene(); });
   document.getElementById("autorotBtn").addEventListener("click", e=>{ controls.autoRotate=!controls.autoRotate; e.currentTarget.classList.toggle("active",controls.autoRotate); });
-  document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderer.render(scene,camera); const a=document.createElement("a"); a.download="kadenz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
+  document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderFrame(); const a=document.createElement("a"); a.download="kadenz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
   document.getElementById("uploadInput").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
     rd.onload=ev=>new THREE.TextureLoader().load(ev.target.result, tex=>{ tex.colorSpace=THREE.SRGBColorSpace; if(photoTexture)photoTexture.dispose(); photoTexture=tex; scene.background=tex; scene.fog=null; }); rd.readAsDataURL(f); });
 }
@@ -965,6 +992,13 @@ function bindRangeHistory(id, onInput) {
     setSlider("widthSlider","widthVal",state.size.w,`${state.size.w}'`);
     setSlider("depthSlider","depthVal",state.size.d,`${state.size.d}'`); updateBadge(); });
   el.addEventListener("change", ()=>{ if(start!==null){ undoStack.push(start); redoStack.length=0; start=null; } renderUI(); });
+}
+
+function dirIcon(k) {
+  const lines = k==="horizontal" ? '<line x1="2" y1="6" x2="26" y2="6"/><line x1="2" y1="11" x2="26" y2="11"/><line x1="2" y1="16" x2="26" y2="16"/>'
+    : k==="vertical" ? '<line x1="7" y1="2" x2="7" y2="20"/><line x1="14" y1="2" x2="14" y2="20"/><line x1="21" y1="2" x2="21" y2="20"/>'
+    : '<line x1="2" y1="17" x2="13" y2="3"/><line x1="9" y1="20" x2="21" y2="4"/><line x1="16" y1="20" x2="26" y2="7"/>';
+  return `<svg viewBox="0 0 28 22"><rect width="28" height="22" rx="3" fill="#bda47e"/><g stroke="#6e5436" stroke-width="1.5">${lines}</g></svg>`;
 }
 
 /* ---------- icons ---------- */

@@ -155,6 +155,9 @@ a { color: inherit; text-decoration: none; }
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 .opt .opt-icon { width: 18px; height: 18px; display: inline-block; }
+.dir-opt { flex-direction: column; gap: 5px; padding: 8px 12px; }
+.dir-ic { width: 38px; height: 28px; display: block; }
+.dir-ic svg { width: 100%; height: 100%; display: block; }
 
 /* Product cards full width */
 .product-options { flex-direction: column; }

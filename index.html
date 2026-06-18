@@ -45,15 +45,6 @@
             <input type="range" id="depthSlider" min="8" max="28" step="1" value="12" /></label>
         </div>
 
-        <h3>Decking Color</h3>
-        <div class="swatches" id="deckingOptions"></div>
-
-        <h3>Board Direction</h3>
-        <div class="options" id="dirOptions"></div>
-
-        <h3>Fascia</h3>
-        <div class="swatches" id="fasciaOptions"></div>
-
         <h3>Levels</h3>
         <div class="level-row">
           <button class="ghost-btn" id="addLevelBtn">＋ Add a level</button>
@@ -63,7 +54,18 @@
            sliders above. Set the height with the slider on the preview.</p>
       </div>
 
-      <!-- STEP 2: RAILING -->
+      <!-- STEP 2: DECKING -->
+      <div class="step-pane" id="stepDecking" data-step="decking" hidden>
+        <h3>Decking Color</h3>
+        <div class="swatches" id="deckingOptions"></div>
+        <h3>Board Direction</h3>
+        <div class="options dir-options" id="dirOptions"></div>
+        <h3>Fascia</h3>
+        <div class="swatches" id="fasciaOptions"></div>
+        <p class="hint">The deck updates live — rotate the view to preview the board direction.</p>
+      </div>
+
+      <!-- STEP 3: RAILING -->
       <div class="step-pane" id="stepRailing" data-step="railing" hidden>
         <div class="config-group">
           <h3>Railing Line</h3>
@@ -145,8 +147,8 @@
       <div class="step-pane" id="stepFurniture" data-step="furniture" hidden>
         <h3>Add Furniture</h3>
         <div class="options" id="furnitureOptions"></div>
-        <p class="hint">Tap an item to add it (tap again to remove). <b>Drag any item in the
-           preview</b> to reposition it on the deck.</p>
+        <p class="hint">Tap an item to add it (tap again to remove). <b>Drag</b> any item in the
+           preview to move it; <b>double-click</b> it to rotate 45°.</p>
       </div>
 
       <div class="summary" id="summary"></div>
