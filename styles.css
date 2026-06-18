@@ -88,6 +88,12 @@ a { color: inherit; text-decoration: none; }
   background: rgba(10,13,18,.6); border: 1px solid var(--line); color: var(--muted);
   font-size: 11px; padding: 6px 11px; border-radius: 999px; pointer-events: none;
 }
+.dim-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.dim-label {
+  position: absolute; transform: translate(-50%, -50%);
+  font-family: "Oswald", sans-serif; font-weight: 600; font-size: 15px; color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000; white-space: nowrap;
+}
 .stage-badge {
   position: absolute; left: 14px; bottom: 14px; z-index: 5;
   background: rgba(10,13,18,.7); backdrop-filter: blur(6px);

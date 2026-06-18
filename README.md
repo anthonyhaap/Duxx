@@ -17,6 +17,10 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 - **Studio environment** — gridded floor fading to a soft horizon (fog), like the original tool
 - **Deck shapes** — Square, Notched, two L-Shapes and a T-Shape, built as extruded footprint polygons with composite-board decking + fascia + support posts
 - **Resizable footprint** — **drag the gold handles** on the deck edges in the 3D view to resize it (or use the Width/Depth sliders); 8–36' × 8–28'
+- **On-canvas dimension labels** — every deck edge shows its live length (ft/in) projected onto the 3D view, updating as you resize
+- **Decking** — color, **board direction** (horizontal / vertical / diagonal) and a separate **fascia** color
+- **Post style** — Post-to-Post vs Over-the-Post (continuous top rail over the posts)
+- **Post caps** — Standard, Ornamental (pyramid), Ball, Halo (LV) and Solar — the lighted caps glow (emissive)
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
 - **Stairs** — add a staircase (treads, risers, stringers) descending from any deck edge; move it around the perimeter
 - **Per-edge railing toggle** — **click an edge in the 3D view** to add/remove railing on just that side (e.g. leave the house side open)

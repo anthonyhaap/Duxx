@@ -65,6 +65,25 @@ export const POST_SIZES = {
   "3.5": { name: '3½"', w: 0.089 },
 };
 
+export const POST_STYLES = {
+  postToPost: { name: "Post-to-Post" },
+  overPost:   { name: "Over-the-Post" },
+};
+
+export const CAPS = {
+  standard: { name: "Standard" },
+  pyramid:  { name: "Ornamental" },
+  ball:     { name: "Ball" },
+  halo:     { name: "Halo (LV)" },
+  solar:    { name: "Solar" },
+};
+
+export const DECK_DIRS = {
+  horizontal: { name: "Horizontal", rot: 0 },
+  vertical:   { name: "Vertical",   rot: Math.PI / 2 },
+  diagonal:   { name: "Diagonal",   rot: Math.PI / 4 },
+};
+
 /* ---------- State + history ---------- */
 function defaultState() {
   return {
@@ -72,12 +91,13 @@ function defaultState() {
     levels: [{ shape: "square" }],
     size: { w: 14, d: 12 },          // overall footprint (ft)
     heightIn: 39,                    // base deck height (in)
-    decking: "driftwood",
+    decking: "driftwood", fascia: "walnut", deckDir: "horizontal",
     disabledEdges: [],               // base-level edges with railing removed
     stairsEdge: null,                // base-level edge index with stairs
     gate: false,
     product: "classic", infill: "picket", color: "black",
     topRail: "flat", postSize: "2.5", spacing: "post",
+    postStyle: "postToPost", cap: "standard",
   };
 }
 let state = defaultState();
@@ -127,6 +147,7 @@ const raycaster = typeof THREE !== "undefined" ? new THREE.Raycaster() : null;
 const pointer = { x: 0, y: 0 };
 let edgeSelectors = [], hoveredSel = null;
 let resizeHandles = [], dragging = null, hoverHandle = null;
+let dimEdges = [], dimLabels = [];
 
 function initThree() {
   renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -156,6 +177,7 @@ function initThree() {
   sun.shadow.bias = -0.0004; scene.add(sun, sun.target);
 
   buildGrid();
+  createDimPool();
   rebuildScene();
   bindCanvasPointer();
 
@@ -166,7 +188,37 @@ function initThree() {
 }
 
 function onResize() { const w=stage.clientWidth,h=stage.clientHeight; if(!w||!h)return; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); }
-function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+function animate() { requestAnimationFrame(animate); controls.update(); updateDimLabels(); renderer.render(scene, camera); }
+
+/* ---------- on-canvas dimension labels ---------- */
+function createDimPool() {
+  const layer=document.getElementById("dimLayer"); if(!layer)return;
+  for (let i=0;i<10;i++){ const d=document.createElement("div"); d.className="dim-label"; d.style.display="none"; layer.appendChild(d); dimLabels.push(d); }
+}
+function computeDimEdges() {
+  dimEdges=[];
+  if (state.step!=="shape") return;
+  const poly=levelInfo()[0].poly, topY=levelInfo()[0].topY;
+  for (let i=0;i<poly.length;i++){
+    const [ax,az]=poly[i],[bx,bz]=poly[(i+1)%poly.length];
+    const lenFt=Math.hypot(bx-ax,bz-az);
+    dimEdges.push({ pos:new THREE.Vector3((ax+bx)/2*FT, topY+0.07, (az+bz)/2*FT), text:ftIn(Math.round(lenFt*12)) });
+  }
+}
+function updateDimLabels() {
+  if (!dimLabels.length) return;
+  const w=stage.clientWidth, h=stage.clientHeight, v=new THREE.Vector3();
+  for (let i=0;i<dimLabels.length;i++){
+    const lbl=dimLabels[i], e=dimEdges[i];
+    if (!e){ lbl.style.display="none"; continue; }
+    v.copy(e.pos).project(camera);
+    if (v.z>1){ lbl.style.display="none"; continue; }
+    lbl.textContent=e.text;
+    lbl.style.left=((v.x*0.5+0.5)*w)+"px";
+    lbl.style.top=((-v.y*0.5+0.5)*h)+"px";
+    lbl.style.display="block";
+  }
+}
 
 /* ---------- textures ---------- */
 function makeSkyTexture(top, bot) {
@@ -220,9 +272,12 @@ function rebuildScene() {
   edgeSelectors = []; hoveredSel = null; resizeHandles = []; hoverHandle = null;
 
   const plankTex = makePlankTexture(DECKING[state.decking].base);
+  plankTex.center.set(0.5, 0.5); plankTex.rotation = DECK_DIRS[state.deckDir].rot;
   const plankMat = new THREE.MeshStandardMaterial({ map: plankTex, roughness:0.8, metalness:0, side: THREE.DoubleSide });
-  const fasciaMat = new THREE.MeshStandardMaterial({ color: shade(DECKING[state.decking].base,-0.25), roughness:0.85, side: THREE.DoubleSide });
+  const fasciaMat = new THREE.MeshStandardMaterial({ color: DECKING[state.fascia].base, roughness:0.85, side: THREE.DoubleSide });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness:0.9 });
+
+  computeDimEdges();
 
   let topY=0.5;
   const lv0Top = levelInfo()[0].topY;
@@ -306,8 +361,9 @@ export function buildPerimeterRailing(parent, poly, topY, s, opts = {}) {
   const metal=new THREE.MeshStandardMaterial({ color:new THREE.Color(finish.base), metalness:0.35, roughness:0.5 });
   const glassMat=new THREE.MeshStandardMaterial({ color:0xbcd6e0, metalness:0, roughness:0.06, transparent:true, opacity:0.22, side:THREE.DoubleSide });
   const cableMat=new THREE.MeshStandardMaterial({ color:new THREE.Color(shade(finish.base,0.12)), metalness:0.7, roughness:0.35 });
+  const glow=new THREE.MeshStandardMaterial({ color:0xfff3cf, emissive:0xffcf78, emissiveIntensity:1.4, roughness:0.4 });
   const postW=POST_SIZES[s.postSize].w*(s.product==="commercial"?1.12:1);
-  const mats={ metal, glassMat, cableMat };
+  const mats={ metal, glassMat, cableMat, glow };
 
   for (let i=0;i<poly.length;i++){
     if (disabled.has(i)) continue;
@@ -332,27 +388,52 @@ function buildRailingEdge(parent, ax, az, bx, bz, topY, s, mats, postW, weight, 
     gap=[+g0.toFixed(4),+g1.toFixed(4)];
   }
 
+  const topProfileH=0.06*weight;
+  const overPost = s.postStyle==="overPost";
+  const postTopY = overPost ? RAILH - topProfileH : RAILH;
+  const railTopY = overPost ? RAILH : RAILH - 0.02;
+  const railCenterY = railTopY - topProfileH/2;
+
   // posts at each boundary except the far corner (L) which the neighbor edge draws
   for (const x of bnds) {
     if (Math.abs(x-L)<1e-4) continue;
-    addBox(postW,RAILH,postW,x,RAILH/2,0,mats.metal);
-    addBox(postW*1.25,0.03,postW*1.25,x,RAILH+0.015,0,mats.metal);
+    addBox(postW,postTopY,postW,x,postTopY/2,0,mats.metal);
+    if (!overPost) buildCap(seg, x, postTopY, postW, s.cap, mats);
   }
 
-  const topProfileH=0.06*weight;
   const isGap=(b0,b1)=> gap && Math.abs(b0-gap[0])<1e-3 && Math.abs(b1-gap[1])<1e-3;
-  const yBot=0.115, yTop=RAILH-0.06;
+  const yBot=0.115, yTop=railCenterY-topProfileH/2-0.02;
   for (let i=0;i<bnds.length-1;i++){
     const b0=bnds[i], b1=bnds[i+1]; if (isGap(b0,b1)) continue;
     const segLen=b1-b0, mid=(b0+b1)/2;
-    if (s.topRail==="round"){ const r=0.04*weight; const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,segLen,16),mats.metal); m.rotation.z=Math.PI/2; m.position.set(mid,RAILH,0); m.castShadow=true; seg.add(m); }
-    else addBox(segLen,topProfileH,0.07*weight,mid,RAILH-topProfileH/2+0.04,0,mats.metal);
+    if (s.topRail==="round"){ const r=0.04*weight; const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,segLen,16),mats.metal); m.rotation.z=Math.PI/2; m.position.set(mid,railTopY-r,0); m.castShadow=true; seg.add(m); }
+    else addBox(segLen,topProfileH,0.07*weight,mid,railCenterY,0,mats.metal);
     addBox(segLen,0.05*weight,0.06*weight,mid,0.09,0,mats.metal);
     buildInfill(seg, s.infill, b0+postW/2, b1-postW/2, yBot, yTop, mats, addBox);
   }
 
   if (gap && opening.gate) buildGate(seg, gap[0], gap[1], s, mats, addBox);
   parent.add(seg);
+}
+
+function buildCap(seg, x, postTopY, W, type, mats) {
+  const add=(geo,mat,y,ry=0)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,0); if(ry)m.rotation.y=ry; m.castShadow=true; seg.add(m); return m; };
+  if (type==="pyramid" || type==="solar"){
+    add(new THREE.ConeGeometry(W*0.78, W*1.0, 4), mats.metal, postTopY+W*0.5, Math.PI/4);
+    if (type==="solar") add(new THREE.BoxGeometry(W*0.42,0.02,W*0.42), mats.glow, postTopY+W*1.0);
+    return;
+  }
+  if (type==="ball"){
+    add(new THREE.BoxGeometry(W*1.2,0.03,W*1.2), mats.metal, postTopY+0.015);
+    add(new THREE.SphereGeometry(W*0.55,16,12), mats.metal, postTopY+0.03+W*0.5);
+    return;
+  }
+  // standard / halo: flat cap (halo adds a glowing ring)
+  add(new THREE.BoxGeometry(W*1.25,0.03,W*1.25), mats.metal, postTopY+0.015);
+  if (type==="halo"){
+    const t=new THREE.Mesh(new THREE.TorusGeometry(W*0.72,0.02,8,20), mats.glow);
+    t.rotation.x=Math.PI/2; t.position.set(x,postTopY+0.04,0); seg.add(t);
+  }
 }
 
 function buildGate(seg, g0, g1, s, mats, addBox) {
@@ -492,6 +573,14 @@ function buildStaticUI() {
     `<button class="shape-thumb" data-key="shape" data-val="${k}">${shapeThumb(s.poly,k)}<span>${s.label}</span></button>`).join("");
   document.getElementById("deckingOptions").innerHTML = Object.entries(DECKING).map(([k,v])=>
     `<button class="swatch" data-key="decking" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
+  document.getElementById("dirOptions").innerHTML = Object.entries(DECK_DIRS).map(([k,v])=>
+    `<button class="opt" data-key="deckDir" data-val="${k}">${v.name}</button>`).join("");
+  document.getElementById("fasciaOptions").innerHTML = Object.entries(DECKING).map(([k,v])=>
+    `<button class="swatch" data-key="fascia" data-val="${k}" data-label="${v.name}" style="background:linear-gradient(145deg, ${shade(v.base,0.18)}, ${shade(v.base,-0.18)})"></button>`).join("");
+  document.getElementById("postStyleOptions").innerHTML = Object.entries(POST_STYLES).map(([k,v])=>
+    `<button class="opt" data-key="postStyle" data-val="${k}">${v.name}</button>`).join("");
+  document.getElementById("capOptions").innerHTML = Object.entries(CAPS).map(([k,v])=>
+    `<button class="opt" data-key="cap" data-val="${k}">${v.name}</button>`).join("");
   document.getElementById("productOptions").innerHTML = Object.entries(PRODUCTS).map(([k,p])=>
     `<button class="opt" data-key="product" data-val="${k}"><span class="opt-name">${p.name}</span><span class="opt-desc">${p.desc}</span></button>`).join("");
   document.getElementById("infillOptions").innerHTML = Object.entries(INFILLS).map(([k,v])=>
@@ -551,6 +640,8 @@ function renderSummary() {
     ["Railing", PRODUCTS[state.product].name],
     ["Infill", INFILLS[state.infill].name],
     ["Finish", FINISHES[state.color].name],
+    ["Post style", POST_STYLES[state.postStyle].name],
+    ["Caps", CAPS[state.cap].name],
     ["Gate", state.gate?"Yes":"No"],
     ["Open sides", state.disabledEdges.length||"0"],
   );

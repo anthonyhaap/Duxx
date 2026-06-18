@@ -51,6 +51,12 @@
         <h3>Decking Color</h3>
         <div class="swatches" id="deckingOptions"></div>
 
+        <h3>Board Direction</h3>
+        <div class="options" id="dirOptions"></div>
+
+        <h3>Fascia</h3>
+        <div class="swatches" id="fasciaOptions"></div>
+
         <h3>Levels</h3>
         <div class="level-row">
           <button class="ghost-btn" id="addLevelBtn">＋ Add a level</button>
@@ -92,6 +98,14 @@
           <div class="options" id="postOptions"></div>
         </div>
         <div class="config-group">
+          <h3>Post Style</h3>
+          <div class="options" id="postStyleOptions"></div>
+        </div>
+        <div class="config-group">
+          <h3>Post Caps</h3>
+          <div class="options" id="capOptions"></div>
+        </div>
+        <div class="config-group">
           <h3>Gate &amp; Edges</h3>
           <div class="level-row">
             <button class="ghost-btn" id="gateBtn">⊏ Add a gate</button>
@@ -113,6 +127,7 @@
     <div class="stage-wrap">
       <div class="stage" id="stage">
         <div class="stage-loading" id="loading">Loading 3D scene…</div>
+        <div class="dim-layer" id="dimLayer"></div>
 
         <!-- HUD: height slider + undo/redo (mirrors the real tool) -->
         <div class="hud">
