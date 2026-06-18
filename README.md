@@ -23,7 +23,6 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 - **Resizable footprint** — **drag the gold handles** on the deck edges in the 3D view to resize it (or use the Width/Depth sliders); 8–36' × 8–28'
 - **On-canvas dimension labels** — every deck edge shows its live length (ft/in) projected onto the 3D view, updating as you resize
 - **DUXXBAK® Composite Decking** (AmeriLux International) — real product line: 5 board **profiles** (DuxxBak Dekk, OPTIMA Dekk/LT, I.Dekk/HD), 7 **colors** (Island Mist, Rainier, Carmel, Biscayne, Jasper, Salt Flat, Hatteras), **ArmorCap/Traction** finishes, board length and direction, plus fascia color
-- **Quote flow** — "Get a Quote" opens a form where a customer enters their details and receives a prepared quote: the full design + DUXXBAK selections + estimated deck area, board count, railing length and post count; emailable (mailto) and downloadable
 - **Post style** — Post-to-Post vs Over-the-Post (continuous top rail over the posts)
 - **Post caps** — Standard, Ornamental (pyramid), Ball, Halo (LV) and Solar — the lighted caps glow (emissive)
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
@@ -83,5 +82,5 @@ geometry tests.
 
 This is a demonstration build. The deck and railings are rendered procedurally with
 original Three.js geometry (no proprietary product imagery). **DUXXBAK®** is a
-trademark of AmeriLux International; on-screen colors are approximations — request a
-quote for physical samples and exact pricing.
+trademark of AmeriLux International; on-screen colors are approximations — order
+physical samples to confirm true color.

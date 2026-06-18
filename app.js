@@ -921,7 +921,8 @@ function renderUI() {
 
   const i=STEP_INDEX[state.step];
   const next=document.getElementById("nextBtn"), back=document.getElementById("backBtn");
-  next.textContent = i===STEPS.length-1 ? "Request a Quote ▶" : `Next: ${STEPS[i+1][1]} ▶`;
+  next.hidden = i===STEPS.length-1;
+  if (!next.hidden) next.textContent = `Next: ${STEPS[i+1][1]} ▶`;
   back.hidden = i===0;
 
   document.getElementById("undoBtn").disabled=!undoStack.length;
@@ -962,104 +963,6 @@ function renderSummary() {
 }
 
 /* ============================================================
-   Quote (DUXXBAK decking + full configuration)
-   ============================================================ */
-let lastQuoteText = "";
-
-function polyArea(poly){ let a=0; for(let i=0;i<poly.length;i++){const[x1,z1]=poly[i],[x2,z2]=poly[(i+1)%poly.length]; a+=x1*z2-x2*z1;} return Math.abs(a)/2; }
-
-function computeEstimate() {
-  const lv=levelInfo();
-  let area=0, railLF=0;
-  lv.forEach((l,idx)=>{
-    area += polyArea(l.poly);
-    for (let i=0;i<l.poly.length;i++){
-      if (idx===0 && state.disabledEdges.includes(i)) continue;
-      const [ax,az]=l.poly[i],[bx,bz]=l.poly[(i+1)%l.poly.length];
-      let len=Math.hypot(bx-ax,bz-az);
-      if (idx===0){ const op=openingForEdge(i); if(op) len=Math.max(0,len-op.width/FT); }
-      railLF+=len;
-    }
-  });
-  const posts=Math.round(railLF/6)+lv.reduce((s,l)=>s+l.poly.length,0);
-  const boards=Math.ceil(area*1.1/(0.458*(+state.boardLength)));
-  return { area:Math.round(area), railLF:Math.round(railLF), posts, boards };
-}
-
-function quoteRows() {
-  const est=computeEstimate(), si=STEP_INDEX;
-  const rows=[
-    ["Deck shape", SHAPES[state.levels[0].shape].label],
-    ["Footprint", `${state.size.w}' × ${state.size.d}'  ·  ~${est.area} sq ft`],
-    ["Height", ftIn(state.heightIn)], ["Levels", state.levels.length],
-    ["— DUXXBAK® Decking —", ""],
-    ["Profile", DECK_PROFILES[state.deckProfile].name],
-    ["Color", DECKING[state.decking].name],
-    ["Finish", DECK_FINISHES[state.deckFinish].name],
-    ["Board length", BOARD_LENGTHS[state.boardLength].name],
-    ["Board direction", DECK_DIRS[state.deckDir].name],
-    ["Fascia", DECKING[state.fascia].name],
-    ["Est. deck boards", `~${est.boards}`],
-    ["— Railing —", ""],
-    ["Line", PRODUCTS[state.product].name],
-    ["Infill / Finish", `${INFILLS[state.infill].name} · ${FINISHES[state.color].name}`],
-    ["Post style / Caps", `${POST_STYLES[state.postStyle].name} · ${CAPS[state.cap].name}`],
-    ["Railing length", `~${est.railLF} ft  ·  ~${est.posts} posts`],
-    ["Gate", state.gate?"Yes":"No"],
-    ["Stairs", state.stairsEdge!=null?(state.stairPlatform?"Yes (with platform)":"Yes"):"No"],
-  ];
-  if (state.wallOn) rows.push(["Wall", `${CLADDING[state.cladding].name} · ${state.doors} door / ${state.windows} window`]);
-  const fl=Object.keys(state.furniture).filter(k=>state.furniture[k]);
-  if (fl.length) rows.push(["Furniture", fl.map(k=>FURNITURE[k].name).join(", ")]);
-  return rows;
-}
-
-function formatQuoteText(ref, cust) {
-  const lines=[`TWANS RAILZ — DECK QUOTE REQUEST`, `Featuring DUXXBAK® Composite Decking (AmeriLux International)`,
-    ``, `Reference: ${ref}`, `Date: ${new Date().toLocaleString()}`, ``,
-    `CUSTOMER`, `  Name:  ${cust.name}`, `  Email: ${cust.email}`,
-    `  ZIP:   ${cust.zip||"-"}`, `  Phone: ${cust.phone||"-"}`,
-    cust.notes?`  Notes: ${cust.notes}`:``, ``, `CONFIGURATION`];
-  quoteRows().forEach(([k,v])=> lines.push(v===""?`  ${k}`:`  ${k.padEnd(20," ")} ${v}`));
-  lines.push(``, `Estimates are approximate and for planning only; final pricing follows review.`);
-  return lines.filter(l=>l!==undefined).join("\n");
-}
-
-function openQuote() {
-  document.getElementById("quoteForm").hidden=false;
-  document.getElementById("quoteDone").hidden=true;
-  document.getElementById("quoteErr").hidden=true;
-  document.getElementById("quoteSummary").innerHTML =
-    `<h4>Your design</h4>`+quoteRows().map(([k,v])=>
-      v===""?`<div class="qs-head">${k.replace(/—/g,"").trim()}</div>`
-            :`<div class="row"><span>${k}</span><span>${v}</span></div>`).join("");
-  document.getElementById("quoteModal").hidden=false;
-}
-function closeQuote(){ document.getElementById("quoteModal").hidden=true; }
-
-function submitQuote(e) {
-  e.preventDefault();
-  const name=document.getElementById("qName").value.trim();
-  const email=document.getElementById("qEmail").value.trim();
-  const err=document.getElementById("quoteErr");
-  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    err.textContent="Please enter your name and a valid email."; err.hidden=false; return;
-  }
-  const cust={ name, email, zip:document.getElementById("qZip").value.trim(),
-    phone:document.getElementById("qPhone").value.trim(), notes:document.getElementById("qNotes").value.trim() };
-  const ref="DX-"+Date.now().toString(36).toUpperCase().slice(-6);
-  lastQuoteText=formatQuoteText(ref, cust);
-  document.getElementById("quoteForm").hidden=true;
-  document.getElementById("quoteDone").hidden=false;
-  document.getElementById("quoteDoneMsg").innerHTML=
-    `Quote <b>${ref}</b> for <b>${cust.name}</b> is ready. Download a copy of your DUXXBAK® deck quote below.`;
-}
-function downloadQuote() {
-  const blob=new Blob([lastQuoteText],{type:"text/plain"}); const url=URL.createObjectURL(blob);
-  const a=document.createElement("a"); a.href=url; a.download="twans-railz-duxxbak-quote.txt"; a.click(); URL.revokeObjectURL(url);
-}
-
-/* ============================================================
    Events
    ============================================================ */
 function registerEvents() {
@@ -1079,16 +982,8 @@ function registerEvents() {
 
   const go=delta=>{ const i=STEP_INDEX[state.step]+delta; if(i<0||i>=STEPS.length)return; commit(()=>state.step=STEPS[i][0]); };
   document.getElementById("nextBtn").addEventListener("click", e=>{ e.preventDefault();
-    if (STEP_INDEX[state.step]===STEPS.length-1) openQuote(); else go(1); });
+    if (STEP_INDEX[state.step]<STEPS.length-1) go(1); });
   document.getElementById("backBtn").addEventListener("click", ()=>go(-1));
-
-  // quote modal
-  document.getElementById("headerQuoteBtn").addEventListener("click", e=>{ e.preventDefault(); openQuote(); });
-  document.getElementById("quoteClose").addEventListener("click", closeQuote);
-  document.getElementById("quoteModal").addEventListener("click", e=>{ if(e.target.id==="quoteModal") closeQuote(); });
-  document.getElementById("quoteFields").addEventListener("submit", submitQuote);
-  document.getElementById("quoteDownload").addEventListener("click", downloadQuote);
-  document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeQuote(); });
 
   document.getElementById("platformBtn").addEventListener("click", ()=>commit(()=>state.stairPlatform=!state.stairPlatform));
   document.getElementById("wallToggleBtn").addEventListener("click", ()=>commit(()=>state.wallOn=!state.wallOn));
