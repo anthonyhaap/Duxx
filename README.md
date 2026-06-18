@@ -21,7 +21,8 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 - **Deck shapes** — Square, Notched, two L-Shapes and a T-Shape, built as extruded footprint polygons with composite-board decking + fascia + support posts
 - **Resizable footprint** — **drag the gold handles** on the deck edges in the 3D view to resize it (or use the Width/Depth sliders); 8–36' × 8–28'
 - **On-canvas dimension labels** — every deck edge shows its live length (ft/in) projected onto the 3D view, updating as you resize
-- **Decking** — color, **board direction** (horizontal / vertical / diagonal) and a separate **fascia** color
+- **DUXXBAK® Composite Decking** (AmeriLux International) — real product line: 5 board **profiles** (DuxxBak Dekk, OPTIMA Dekk/LT, I.Dekk/HD), 7 **colors** (Island Mist, Rainier, Carmel, Biscayne, Jasper, Salt Flat, Hatteras), **ArmorCap/Traction** finishes, board length and direction, plus fascia color
+- **Quote flow** — "Get a Quote" opens a form where a customer enters their details and receives a prepared quote: the full design + DUXXBAK selections + estimated deck area, board count, railing length and post count; emailable (mailto) and downloadable
 - **Post style** — Post-to-Post vs Over-the-Post (continuous top rail over the posts)
 - **Post caps** — Standard, Ornamental (pyramid), Ball, Halo (LV) and Solar — the lighted caps glow (emissive)
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**

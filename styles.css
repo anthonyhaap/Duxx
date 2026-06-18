@@ -285,6 +285,57 @@ a { color: inherit; text-decoration: none; }
 .hud-actions button:disabled { opacity: .38; cursor: default; }
 .hud-actions button:not(:disabled):hover { color: #2f7fd6; }
 
+/* ---------- DUXXBAK product banner ---------- */
+.product-banner {
+  background: linear-gradient(120deg, #1a2a1f, #233b2b); border: 1px solid #2f5740;
+  border-radius: 10px; padding: 12px 14px; margin: 4px 0 14px; font-size: 13px; color: var(--text);
+}
+.product-banner small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.product-brand {
+  font-family: "Oswald", sans-serif; font-weight: 700; letter-spacing: 1px; color: #6fd08c;
+}
+
+/* ---------- Quote modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100; background: rgba(6,9,13,.72); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  position: relative; width: min(820px, 96vw); max-height: 92vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 26px clamp(18px,3vw,32px); box-shadow: var(--shadow);
+}
+.modal h2 { font-family: "Oswald", sans-serif; margin: 0 0 6px; font-size: 26px; }
+.modal-sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+.modal-close {
+  position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--muted);
+  font-size: 28px; line-height: 1; cursor: pointer;
+}
+.modal-close:hover { color: var(--text); }
+.quote-grid { display: grid; grid-template-columns: 1fr 300px; gap: 22px; }
+@media (max-width: 720px) { .quote-grid { grid-template-columns: 1fr; } }
+.quote-summary {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 13px;
+}
+.quote-summary h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.quote-summary .row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.quote-summary .row span:first-child { color: var(--muted); }
+.quote-summary .row span:last-child { font-weight: 600; text-align: right; }
+.quote-summary .qs-head {
+  margin: 10px 0 2px; font-weight: 700; color: var(--accent-2); font-size: 11px;
+  letter-spacing: .5px; text-transform: uppercase;
+}
+#quoteFields { display: flex; flex-direction: column; gap: 12px; }
+#quoteFields label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+#quoteFields input, #quoteFields textarea {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+  color: var(--text); font-family: inherit; font-size: 14px;
+}
+#quoteFields input:focus, #quoteFields textarea:focus { outline: none; border-color: var(--accent); }
+.quote-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quote-err { color: #ff8b6b; font-size: 12px; }
+#quoteDone .cta-row { margin-top: 18px; }
+
 .site-footer {
   text-align: center; color: var(--muted); font-size: 12px;
   padding: 26px 16px 40px; border-top: 1px solid var(--line);

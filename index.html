@@ -23,7 +23,7 @@
       <a href="#" class="active">Deck Visualizer</a>
       <a href="#">Products</a>
       <a href="#">Where to Buy</a>
-      <a href="#" class="cta">Get a Quote</a>
+      <a href="#" class="cta" id="headerQuoteBtn">Get a Quote</a>
     </nav>
   </header>
 
@@ -56,13 +56,24 @@
 
       <!-- STEP 2: DECKING -->
       <div class="step-pane" id="stepDecking" data-step="decking" hidden>
-        <h3>Decking Color</h3>
+        <div class="product-banner">
+          <span class="product-brand">DUXXBAK®</span> Composite Decking
+          <small>by AmeriLux International</small>
+        </div>
+        <h3>Board Profile</h3>
+        <div class="options product-options" id="profileOptions"></div>
+        <h3>Color</h3>
         <div class="swatches" id="deckingOptions"></div>
+        <h3>Finish</h3>
+        <div class="options" id="deckFinishOptions"></div>
         <h3>Board Direction</h3>
         <div class="options dir-options" id="dirOptions"></div>
-        <h3>Fascia</h3>
+        <h3>Board Length</h3>
+        <div class="options" id="boardLenOptions"></div>
+        <h3>Fascia Color</h3>
         <div class="swatches" id="fasciaOptions"></div>
-        <p class="hint">The deck updates live — rotate the view to preview the board direction.</p>
+        <p class="hint">DUXXBAK® colors are approximated on screen — request a quote for
+           physical samples and exact pricing.</p>
       </div>
 
       <!-- STEP 3: RAILING -->
@@ -203,6 +214,40 @@
     <p>Replica build for demonstration purposes. Kadenz® is a trademark of its respective owner.
        Renderings are stylized 3D approximations.</p>
   </footer>
+
+  <!-- Quote modal -->
+  <div class="modal-overlay" id="quoteModal" hidden>
+    <div class="modal">
+      <button class="modal-close" id="quoteClose" aria-label="Close">×</button>
+      <div id="quoteForm">
+        <h2>Request a Quote</h2>
+        <p class="modal-sub">Featuring <b>DUXXBAK®</b> Composite Decking by AmeriLux International.
+           Enter your details and we'll prepare pricing for this exact design.</p>
+        <div class="quote-grid">
+          <div class="quote-summary" id="quoteSummary"></div>
+          <form id="quoteFields" novalidate>
+            <label>Full name *<input id="qName" autocomplete="name" required /></label>
+            <label>Email *<input id="qEmail" type="email" autocomplete="email" required /></label>
+            <div class="quote-row">
+              <label>ZIP / Postal<input id="qZip" autocomplete="postal-code" /></label>
+              <label>Phone<input id="qPhone" type="tel" autocomplete="tel" /></label>
+            </div>
+            <label>Notes<textarea id="qNotes" rows="2" placeholder="Timeline, site details…"></textarea></label>
+            <div class="quote-err" id="quoteErr" hidden></div>
+            <button type="submit" class="quote-btn">Submit quote request</button>
+          </form>
+        </div>
+      </div>
+      <div id="quoteDone" hidden>
+        <h2>Quote request prepared ✓</h2>
+        <p id="quoteDoneMsg"></p>
+        <div class="cta-row">
+          <a class="quote-btn" id="quoteMailto" href="#">✉ Email it to our team</a>
+          <button class="ghost-btn" id="quoteDownload">⬇ Download summary</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
