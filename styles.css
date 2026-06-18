@@ -12,6 +12,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* ensure the hidden attribute wins over class display rules */
 
 html, body {
   margin: 0;
