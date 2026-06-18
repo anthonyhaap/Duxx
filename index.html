@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deck Visualizer — Kadenz® Aluminum Railings (Replica)</title>
+  <meta name="description" content="Interactive deck railing visualizer. Preview Kadenz aluminum railing styles, finishes, infill and top rail profiles on your deck before you build." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark">KADENZ</span>
+      <span class="brand-sub">ALUMINUM RAILINGS</span>
+    </div>
+    <nav class="top-nav">
+      <a href="#" class="active">Deck Visualizer</a>
+      <a href="#">Products</a>
+      <a href="#">Where to Buy</a>
+      <a href="#" class="cta">Get a Quote</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Deck Railing Visualizer</h1>
+    <p>Design your railing and preview it in real time. Choose a product line, finish, infill and
+       top rail — or upload a photo of your own deck.</p>
+  </section>
+
+  <main class="app">
+    <!-- Stage / preview -->
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <img id="customPhoto" class="custom-photo" alt="" hidden />
+        <svg id="viz" viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid slice" role="img"
+             aria-label="Railing preview"></svg>
+        <div class="stage-badge" id="stageBadge">Kadenz Classic · Picket · Matte Black</div>
+      </div>
+
+      <div class="scene-strip" id="sceneStrip" aria-label="Choose a scene"></div>
+
+      <div class="stage-actions">
+        <label class="upload-btn">
+          <input type="file" id="uploadInput" accept="image/*" hidden />
+          ⬆ Upload your deck photo
+        </label>
+        <button class="ghost-btn" id="downloadBtn">⬇ Save image</button>
+        <button class="ghost-btn" id="resetBtn">↻ Reset</button>
+      </div>
+    </div>
+
+    <!-- Configurator -->
+    <aside class="panel">
+      <div class="config-group" data-group="product">
+        <h3>1 · Railing Line</h3>
+        <div class="options product-options" id="productOptions"></div>
+        <p class="hint" id="productHint"></p>
+      </div>
+
+      <div class="config-group" data-group="infill">
+        <h3>2 · Infill Style</h3>
+        <div class="options infill-options" id="infillOptions"></div>
+      </div>
+
+      <div class="config-group" data-group="color">
+        <h3>3 · Finish</h3>
+        <div class="options swatches" id="colorOptions"></div>
+        <p class="hint" id="colorHint"></p>
+      </div>
+
+      <div class="config-group" data-group="toprail">
+        <h3>4 · Top Rail Profile</h3>
+        <div class="options" id="topRailOptions"></div>
+      </div>
+
+      <div class="config-group" data-group="post">
+        <h3>5 · Post &amp; Spacing</h3>
+        <div class="options" id="postOptions"></div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <a class="quote-btn" id="quoteBtn" href="#">Request a Quote for This Configuration</a>
+    </aside>
+  </main>
+
+  <footer class="site-footer">
+    <p>Replica build for demonstration purposes. Kadenz® is a trademark of its respective owner.
+       Railing renderings are stylized approximations.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
