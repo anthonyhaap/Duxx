@@ -1,9 +1,9 @@
 {
-  "name": "kadenz-deck-visualizer",
+  "name": "twans-railz-deck-visualizer",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Interactive deck railing visualizer — a replica of the Kadenz Aluminum Railings deck visualizer.",
+  "description": "Twans Railz — interactive 3D deck visualizer with DUXXBAK composite decking and aluminum railings.",
   "scripts": {
     "start": "python3 -m http.server 5173",
     "dev": "python3 -m http.server 5173"

@@ -1,14 +1,15 @@
-# Kadenz 3D Deck Railing Visualizer (Replica)
+# Twans Railz — 3D Deck Visualizer
 
-An interactive **3D deck designer** modeled on the
-[Kadenz Aluminum Railings Deck Visualizer](https://kadenzrailing.com/visualizer/).
-Like the real tool, it's a multi-step flow in a studio grid environment:
+An interactive **3D deck designer** for **Twans Railz** aluminum railings and
+**DUXXBAK® Composite Decking** (AmeriLux International). It's a multi-step flow in a
+studio grid environment:
 
-1. **Shape** — pick a deck footprint, drag-resize it, set height, decking color/direction/fascia, add levels
-2. **Railing** — wrap the perimeter; line, infill, finish, top rail, post style & caps; click edges to open sides; gate
-3. **Stairs** — add a staircase (move it around the perimeter), optional landing **platform**, step-board & riser colors
-4. **Walls** — add an attached/detached house wall with cladding (incl. brick), **doors** and **windows**
-5. **Furniture** — drop a table & chairs, lounge, planter, grill or umbrella onto the deck
+1. **Shape** — pick a deck footprint, drag-resize it, set height, add levels
+2. **Decking** — DUXXBAK® board profile, color, finish, length, direction & fascia
+3. **Railing** — wrap the perimeter; line, infill, finish, top rail, post style & caps; click edges to open sides; gate
+4. **Stairs** — add a staircase (move it around the perimeter), optional landing **platform**, step-board & riser colors
+5. **Walls** — add an attached/detached house wall with cladding (incl. brick), **doors** and **windows**
+6. **Furniture** — drop a table & chairs, lounge, planter, grill or umbrella onto the deck
 
 Each step **adds to** the previous, so by the end you see the whole build at once.
 
@@ -80,7 +81,7 @@ geometry tests.
 
 ## Notes
 
-This is a demonstration replica. The original Kadenz visualizer is powered by a
-third-party photo-compositing service; this build reproduces the *experience*
-(configure → live 3D preview → save/quote) with original Three.js rendering rather
-than proprietary product imagery. **Kadenz®** is a trademark of its respective owner.
+This is a demonstration build. The deck and railings are rendered procedurally with
+original Three.js geometry (no proprietary product imagery). **DUXXBAK®** is a
+trademark of AmeriLux International; on-screen colors are approximations — request a
+quote for physical samples and exact pricing.

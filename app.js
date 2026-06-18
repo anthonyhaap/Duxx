@@ -1,7 +1,7 @@
 /* ============================================================
-   Kadenz 3D Deck Visualizer — replica
+   Twans Railz 3D Deck Visualizer — replica
    Step 1: deck shape / size / height / levels / stairs (studio grid)
-   Step 2: Kadenz railing around the perimeter (+ per-edge toggle, gate)
+   Step 2: Twans Railz railing around the perimeter (+ per-edge toggle, gate)
    ============================================================ */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -55,11 +55,11 @@ export const DECK_FINISHES = {
 export const BOARD_LENGTHS = { "12": { name: "12 ft" }, "16": { name: "16 ft" }, "20": { name: "20 ft" } };
 
 export const PRODUCTS = {
-  classic:    { name: "Kadenz Classic",    desc: "Budget-friendly, sturdy, easy install.",
+  classic:    { name: "Twans Railz Classic",    desc: "Budget-friendly, sturdy, easy install.",
                 hint: "Clean flat top rail with economical components — a great all-rounder.", railWeight: 1,    defaultTopRail: "flat" },
-  elegance:   { name: "Kadenz Elegance",   desc: "Refined balance of strength & style.",
+  elegance:   { name: "Twans Railz Elegance",   desc: "Refined balance of strength & style.",
                 hint: "Slimmer profile with an internally-mounted top rail for a sleek silhouette.", railWeight: 0.9, defaultTopRail: "round" },
-  commercial: { name: "Kadenz Commercial", desc: "Lab-tested for multi-family use.",
+  commercial: { name: "Twans Railz Commercial", desc: "Lab-tested for multi-family use.",
                 hint: "Heaviest-duty line with reinforced posts for code-driven projects.", railWeight: 1.2,  defaultTopRail: "flat" },
 };
 
@@ -964,7 +964,6 @@ function renderSummary() {
 /* ============================================================
    Quote (DUXXBAK decking + full configuration)
    ============================================================ */
-const QUOTE_EMAIL = "quotes@kadenzrailing.com";
 let lastQuoteText = "";
 
 function polyArea(poly){ let a=0; for(let i=0;i<poly.length;i++){const[x1,z1]=poly[i],[x2,z2]=poly[(i+1)%poly.length]; a+=x1*z2-x2*z1;} return Math.abs(a)/2; }
@@ -1016,7 +1015,7 @@ function quoteRows() {
 }
 
 function formatQuoteText(ref, cust) {
-  const lines=[`KADENZ RAILING — DECK QUOTE REQUEST`, `Featuring DUXXBAK® Composite Decking (AmeriLux International)`,
+  const lines=[`TWANS RAILZ — DECK QUOTE REQUEST`, `Featuring DUXXBAK® Composite Decking (AmeriLux International)`,
     ``, `Reference: ${ref}`, `Date: ${new Date().toLocaleString()}`, ``,
     `CUSTOMER`, `  Name:  ${cust.name}`, `  Email: ${cust.email}`,
     `  ZIP:   ${cust.zip||"-"}`, `  Phone: ${cust.phone||"-"}`,
@@ -1053,14 +1052,11 @@ function submitQuote(e) {
   document.getElementById("quoteForm").hidden=true;
   document.getElementById("quoteDone").hidden=false;
   document.getElementById("quoteDoneMsg").innerHTML=
-    `Quote <b>${ref}</b> is ready for <b>${cust.name}</b>. Email it to our team or download a copy —
-     we'll follow up at <b>${cust.email}</b> with pricing for your DUXXBAK® deck.`;
-  document.getElementById("quoteMailto").href=
-    `mailto:${QUOTE_EMAIL}?subject=`+encodeURIComponent(`Deck quote ${ref} — ${cust.name}`)+`&body=`+encodeURIComponent(lastQuoteText);
+    `Quote <b>${ref}</b> for <b>${cust.name}</b> is ready. Download a copy of your DUXXBAK® deck quote below.`;
 }
 function downloadQuote() {
   const blob=new Blob([lastQuoteText],{type:"text/plain"}); const url=URL.createObjectURL(blob);
-  const a=document.createElement("a"); a.href=url; a.download="kadenz-duxxbak-quote.txt"; a.click(); URL.revokeObjectURL(url);
+  const a=document.createElement("a"); a.href=url; a.download="twans-railz-duxxbak-quote.txt"; a.click(); URL.revokeObjectURL(url);
 }
 
 /* ============================================================
@@ -1124,7 +1120,7 @@ function registerEvents() {
   document.getElementById("redoBtn").addEventListener("click", redo);
   document.getElementById("resetBtn").addEventListener("click", ()=>{ camera.position.set(6.5,5.2,11); controls.target.set(0,0.5,0); pendingRefit=true; rebuildScene(); });
   document.getElementById("autorotBtn").addEventListener("click", e=>{ controls.autoRotate=!controls.autoRotate; e.currentTarget.classList.toggle("active",controls.autoRotate); });
-  document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderFrame(); const a=document.createElement("a"); a.download="kadenz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
+  document.getElementById("downloadBtn").addEventListener("click", ()=>{ renderFrame(); const a=document.createElement("a"); a.download="twans-railz-deck.png"; a.href=renderer.domElement.toDataURL("image/png"); a.click(); });
   document.getElementById("uploadInput").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
     rd.onload=ev=>new THREE.TextureLoader().load(ev.target.result, tex=>{ tex.colorSpace=THREE.SRGBColorSpace; if(photoTexture)photoTexture.dispose(); photoTexture=tex; scene.background=tex; scene.fog=null; }); rd.readAsDataURL(f); });
 }
