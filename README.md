@@ -16,7 +16,11 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 
 - **Studio environment** — gridded floor fading to a soft horizon (fog), like the original tool
 - **Deck shapes** — Square, Notched, two L-Shapes and a T-Shape, built as extruded footprint polygons with composite-board decking + fascia + support posts
+- **Resizable footprint** — Width/Depth sliders scale any shape (8–36' × 8–28')
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
+- **Stairs** — add a staircase (treads, risers, stringers) descending from any deck edge; move it around the perimeter
+- **Per-edge railing toggle** — **click an edge in the 3D view** to add/remove railing on just that side (e.g. leave the house side open)
+- **Gate** — drop an openable gate section (frame + handle) into the railing, at the stairs/front edge
 - **Levels** — add a stacked second tier that rests on the base deck
 - **Decking colors** — Driftwood, Cedar, Walnut, Mahogany, Slate
 - **Railing lines** — Classic, Elegance, Commercial (profile weight + default top rail)
