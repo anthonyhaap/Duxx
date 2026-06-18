@@ -126,6 +126,7 @@ let renderer, scene, camera, controls, sun, worldGroup, photoTexture = null, sky
 const raycaster = typeof THREE !== "undefined" ? new THREE.Raycaster() : null;
 const pointer = { x: 0, y: 0 };
 let edgeSelectors = [], hoveredSel = null;
+let resizeHandles = [], dragging = null, hoverHandle = null;
 
 function initThree() {
   renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -216,7 +217,7 @@ function levelInfo() {
 function rebuildScene() {
   if (worldGroup) { scene.remove(worldGroup); disposeGroup(worldGroup); }
   worldGroup = new THREE.Group();
-  edgeSelectors = []; hoveredSel = null;
+  edgeSelectors = []; hoveredSel = null; resizeHandles = []; hoverHandle = null;
 
   const plankTex = makePlankTexture(DECKING[state.decking].base);
   const plankMat = new THREE.MeshStandardMaterial({ map: plankTex, roughness:0.8, metalness:0, side: THREE.DoubleSide });
@@ -242,6 +243,7 @@ function rebuildScene() {
   });
 
   if (state.step === "railing") buildEdgeSelectors(levelInfo()[0].poly, levelInfo()[0].topY);
+  if (state.step === "shape")   buildResizeHandles(levelInfo()[0].poly, levelInfo()[0].topY);
 
   scene.add(worldGroup);
   if (controls) controls.target.set(0, topY*0.6+0.2, 0);
@@ -393,23 +395,74 @@ function buildEdgeSelectors(poly, topY) {
   }
 }
 
+/* ---------- drag-to-resize handles ---------- */
+function buildResizeHandles(poly, topY) {
+  const xs=poly.map(p=>p[0]),zs=poly.map(p=>p[1]);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
+  const cx=(minX+maxX)/2, cz=(minZ+maxZ)/2;
+  const mk=(xFt,zFt,axis,dir)=>{
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.14,18,14),
+      new THREE.MeshBasicMaterial({ color:0xc8a24a, depthTest:false }));
+    m.position.set(xFt*FT, topY+0.14, zFt*FT); m.renderOrder=4;
+    m.userData={ resize:true, axis, dir, cx, cz }; worldGroup.add(m); resizeHandles.push(m);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.025,8,20),
+      new THREE.MeshBasicMaterial({ color:0xc8a24a, transparent:true, opacity:0.5, depthTest:false }));
+    ring.position.copy(m.position); ring.rotation.x=Math.PI/2; ring.renderOrder=4; worldGroup.add(ring);
+  };
+  mk(maxX,cz,"w",1); mk(minX,cz,"w",-1); mk(cx,maxZ,"d",1); mk(cx,minZ,"d",-1);
+}
+
 function bindCanvasPointer() {
   const el=renderer.domElement; let down=null;
-  el.addEventListener("pointerdown", e=>{ down={x:e.clientX,y:e.clientY}; });
+
+  el.addEventListener("pointerdown", e=>{
+    if (state.step==="shape"){
+      const h=pickHandle(e);
+      if (h){ dragging={ ...h.userData, start: snapshot() }; controls.enabled=false;
+        el.setPointerCapture && el.setPointerCapture(e.pointerId); el.style.cursor="grabbing"; return; }
+    }
+    down={x:e.clientX,y:e.clientY};
+  });
+
+  el.addEventListener("pointermove", e=>{
+    if (dragging){ doResize(e); return; }
+    if (state.step==="shape"){
+      const h=pickHandle(e);
+      if (hoverHandle && hoverHandle!==h) hoverHandle.scale.setScalar(1);
+      if (h){ h.scale.setScalar(1.3); hoverHandle=h; el.style.cursor="grab"; } else { hoverHandle=null; el.style.cursor=""; }
+      return;
+    }
+    if (state.step!=="railing"){ if(hoveredSel){hoveredSel.material.opacity=0.16;hoveredSel=null;} el.style.cursor=""; return; }
+    const idx=pickEdgeMesh(e);
+    if (hoveredSel && hoveredSel!==idx){ hoveredSel.material.opacity=0.16; hoveredSel=null; }
+    if (idx){ idx.material.opacity=0.42; hoveredSel=idx; el.style.cursor="pointer"; } else el.style.cursor="";
+  });
+
   el.addEventListener("pointerup", e=>{
+    if (dragging){ undoStack.push(dragging.start); redoStack.length=0; dragging=null; controls.enabled=true; el.style.cursor=""; renderUI(); return; }
     if (!down) return; const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null;
     if (moved>6 || state.step!=="railing") return;
     const hit=pickEdge(e); if (hit==null) return;
     commit(()=>{ const s=new Set(state.disabledEdges); s.has(hit)?s.delete(hit):s.add(hit); state.disabledEdges=[...s]; });
   });
-  el.addEventListener("pointermove", e=>{
-    if (state.step!=="railing"){ if(hoveredSel){hoveredSel.material.opacity=0.16;hoveredSel=null;} return; }
-    const idx=pickEdgeMesh(e);
-    if (hoveredSel && hoveredSel!==idx){ hoveredSel.material.opacity=0.16; hoveredSel=null; }
-    if (idx){ idx.material.opacity=0.42; hoveredSel=idx; el.style.cursor="pointer"; } else el.style.cursor="";
-  });
 }
+
+function doResize(e) {
+  setPointer(e); raycaster.setFromCamera(pointer,camera);
+  const topY=levelInfo()[0].topY;
+  const plane=new THREE.Plane(new THREE.Vector3(0,1,0), -topY), pt=new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(plane,pt)) return;
+  const { axis, dir, cx, cz }=dragging;
+  if (axis==="w"){ let w=Math.round((pt.x/FT - cx)*dir*2); state.size.w=Math.max(8,Math.min(36,w)); }
+  else          { let d=Math.round((pt.z/FT - cz)*dir*2); state.size.d=Math.max(8,Math.min(28,d)); }
+  rebuildScene();
+  setSlider("widthSlider","widthVal",state.size.w,`${state.size.w}'`);
+  setSlider("depthSlider","depthVal",state.size.d,`${state.size.d}'`);
+  updateBadge();
+}
+
 function setPointer(e){ const r=renderer.domElement.getBoundingClientRect(); pointer.x=((e.clientX-r.left)/r.width)*2-1; pointer.y=-((e.clientY-r.top)/r.height)*2+1; }
+function pickHandle(e){ setPointer(e); raycaster.setFromCamera(pointer,camera); const h=raycaster.intersectObjects(resizeHandles,false); return h.length?h[0].object:null; }
 function pickEdgeMesh(e){ setPointer(e); raycaster.setFromCamera(pointer,camera); const hits=raycaster.intersectObjects(edgeSelectors,false); return hits.length?hits[0].object:null; }
 function pickEdge(e){ const m=pickEdgeMesh(e); return m?m.userData.edge:null; }
 
