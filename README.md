@@ -18,7 +18,7 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 
 ## Features
 
-- **Studio environment** — gridded floor fading to a soft horizon (fog), like the original tool
+- **Backyard environment** — grass lawn, a hazy tree line + rolling hills on the horizon, an in-ground **swimming pool** (water + coping) and a black perimeter **fence** around the yard; the deck sits on the lawn on its support posts
 - **Deck shapes** — Square, Notched, two L-Shapes and a T-Shape, built as extruded footprint polygons with composite-board decking + fascia + support posts
 - **Resizable footprint** — **drag the gold handles** on the deck edges in the 3D view to resize it (or use the Width/Depth sliders); 8–36' × 8–28'
 - **On-canvas dimension labels** — every deck edge shows its live length (ft/in) projected onto the 3D view, updating as you resize

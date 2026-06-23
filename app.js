@@ -276,7 +276,7 @@ function initThree() {
   const sc = sun.shadow.camera; sc.left=-16; sc.right=16; sc.top=16; sc.bottom=-16; sc.near=0.5; sc.far=70;
   sun.shadow.bias = -0.0004; scene.add(sun, sun.target);
 
-  buildGrid();
+  buildEnvironment();
   createDimPool();
   rebuildScene();
   bindCanvasPointer();
@@ -313,7 +313,7 @@ function fitCameraToDeck(poly, topY) {
   const dir=new THREE.Vector3().subVectors(camera.position, controls.target);
   if (dir.lengthSq()<1e-4) dir.set(0.6,0.5,1);
   dir.normalize();
-  const dist=(radius*1.35)/Math.sin((camera.fov*Math.PI/180)/2);
+  const dist=(radius*1.7)/Math.sin((camera.fov*Math.PI/180)/2);   // pull back to show the yard
   controls.target.copy(center);
   camera.position.copy(center).addScaledVector(dir, dist);
   camera.near=Math.max(0.1, dist/200); camera.far=dist*12; camera.updateProjectionMatrix();
@@ -372,11 +372,6 @@ function makeSkyTexture(top, bot) {
   ctx.fillStyle=g; ctx.fillRect(0,0,8,256);
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t;
 }
-function makeGridTexture() {
-  const c=document.createElement("canvas"); c.width=c.height=128; const ctx=c.getContext("2d");
-  ctx.fillStyle="#33414f"; ctx.fillRect(0,0,128,128); ctx.strokeStyle="#536579"; ctx.lineWidth=2; ctx.strokeRect(0,0,128,128);
-  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(120,120); return t;
-}
 function makePlankTexture(baseHex) {
   const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d");
   ctx.fillStyle=baseHex; ctx.fillRect(0,0,256,256);
@@ -390,10 +385,67 @@ function makePlankTexture(baseHex) {
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(0.9,0.9); return t;
 }
 
-function buildGrid() {
-  const g=new THREE.Mesh(new THREE.PlaneGeometry(600,600),
-    new THREE.MeshStandardMaterial({ map: makeGridTexture(), roughness:1, metalness:0 }));
-  g.rotation.x=-Math.PI/2; g.receiveShadow=true; scene.add(g);
+function makeGrassTexture() {
+  const c=document.createElement("canvas"); c.width=c.height=128; const ctx=c.getContext("2d");
+  ctx.fillStyle="#4f7f37"; ctx.fillRect(0,0,128,128);
+  const greens=["#578a3c","#46732f","#5f9442","#4a7a34","#6fa04d","#436f2c"];
+  for (let i=0;i<2600;i++){ ctx.fillStyle=greens[(Math.random()*greens.length)|0]; ctx.fillRect(Math.random()*128, Math.random()*128, 1.6, 2.6); }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(70,70); return t;
+}
+
+/* full backyard environment: grass, distant hills + trees, a pool and a perimeter fence */
+function buildEnvironment() {
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(600,600),
+    new THREE.MeshStandardMaterial({ color:0x4f7f37, map:makeGrassTexture(), roughness:1, metalness:0 }));
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+  // rolling hills on the horizon
+  const hillMat=new THREE.MeshStandardMaterial({ color:0x6f9a55, roughness:1 });
+  [[-30,-46,10],[8,-54,13],[36,-44,8]].forEach(([x,z,r])=>{
+    const h=new THREE.Mesh(new THREE.SphereGeometry(r,16,12), hillMat);
+    h.position.set(x,-r*0.55,z); h.scale.set(1.7,0.5,1.7); scene.add(h);
+  });
+
+  // tree line (kept to the back/sides so it frames the view)
+  const trunkMat=new THREE.MeshStandardMaterial({ color:0x6b4a2c, roughness:1 });
+  const leaf=[new THREE.MeshStandardMaterial({color:0x3f6e34,roughness:1}), new THREE.MeshStandardMaterial({color:0x4d7d3c,roughness:1})];
+  for (let i=0;i<24;i++){
+    const a=(i/24)*Math.PI*2 + (Math.random()-0.5)*0.25, rad=20+Math.random()*9;
+    const x=Math.cos(a)*rad, z=Math.sin(a)*rad - 6; if (z>6) continue;
+    const s=0.8+Math.random()*0.9;
+    const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.15*s,0.2*s,2.2*s,7), trunkMat); tr.position.set(x,1.1*s,z); tr.castShadow=true; scene.add(tr);
+    [[2.4,1.4],[3.0,1.05],[3.5,0.72]].forEach(([dy,r],k)=>{ const f=new THREE.Mesh(new THREE.SphereGeometry(r*s,10,9), leaf[k%2]); f.position.set(x,dy*s,z); f.castShadow=true; scene.add(f); });
+  }
+
+  buildPool(-8.5, 3.5);
+  buildFence(14, 11);
+}
+
+function buildPool(cx, cz) {
+  const W=6, D=3.6;
+  const water=new THREE.Mesh(new THREE.BoxGeometry(W,0.5,D),
+    new THREE.MeshStandardMaterial({ color:0x2f86b5, roughness:0.12, metalness:0.15, transparent:true, opacity:0.92 }));
+  water.position.set(cx,-0.2,cz); scene.add(water);                 // top ≈ 0.05
+  const cop=new THREE.MeshStandardMaterial({ color:0xd8d2c2, roughness:0.85 });
+  const t=0.45;
+  const mk=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.16,d),cop); m.position.set(cx+x,0.06,cz+z); m.receiveShadow=true; m.castShadow=true; scene.add(m); };
+  mk(W+2*t, t, 0, D/2+t/2); mk(W+2*t, t, 0, -(D/2+t/2)); mk(t, D, W/2+t/2, 0); mk(t, D, -(W/2+t/2), 0);
+}
+
+function buildFence(hx, hz) {
+  const mat=new THREE.MeshStandardMaterial({ color:0x2b2b2e, metalness:0.3, roughness:0.6 });
+  const H=1.3;
+  const sides=[[-hx,-hz,hx,-hz],[hx,-hz,hx,hz],[hx,hz,-hx,hz],[-hx,hz,-hx,-hz]];
+  for (const [ax,az,bx,bz] of sides){
+    const len=Math.hypot(bx-ax,bz-az), A=Math.atan2(bz-az,bx-ax);
+    const g=new THREE.Group(); g.position.set(ax,0,az); g.rotation.y=-A;
+    const np=Math.max(2,Math.round(len/2.2));
+    for (let i=0;i<=np;i++){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.09,H,0.09),mat); p.position.set(len*i/np,H/2,0); p.castShadow=true; g.add(p); }
+    for (const y of [H*0.85,H*0.22]){ const r=new THREE.Mesh(new THREE.BoxGeometry(len,0.05,0.05),mat); r.position.set(len/2,y,0); g.add(r); }
+    const pk=Math.floor(len/0.55);
+    for (let i=1;i<pk;i++){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.025,H*0.92,0.025),mat); p.position.set(len*i/pk,H*0.46,0); g.add(p); }
+    scene.add(g);
+  }
 }
 
 /* ============================================================
