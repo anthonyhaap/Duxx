@@ -170,7 +170,7 @@ export const FURNITURE = {
   umbrella: { name: "Umbrella" },
 };
 
-export const STEPS = [["shape","Shape"],["decking","Decking"],["railing","Railing"],["stairs","Stairs"],["walls","Walls"],["furniture","Furniture"]];
+export const STEPS = [["shape","Shape"],["decking","Decking"],["railing","Railing"],["stairs","Stairs"],["walls","House"],["furniture","Furniture"]];
 const STEP_INDEX = Object.fromEntries(STEPS.map(([k],i)=>[k,i]));
 
 /* ---------- State + history ---------- */
@@ -485,12 +485,15 @@ function rebuildScene() {
 
   let topY=0.5;
   const levels = levelInfo(), lv0 = levels[0];
+  const houseEdge = (state.wallOn && si >= STEP_INDEX.walls)
+    ? ((state.wallEdge!=null && state.wallEdge<lv0.poly.length) ? state.wallEdge : backEdge(lv0.poly)) : null;
   levels.forEach((lv) => {
     buildDeckLevel(worldGroup, lv.poly, lv.topY, plankMat, fasciaMat, woodMat, lv.base ? 0 : lv0.topY);
     if (si >= STEP_INDEX.railing) {
-      const opts = lv.base
-        ? { disabled: new Set(state.disabledEdges), openingFor: openingForEdge }
-        : { disabled: new Set(), openingFor: () => null };
+      let opts;
+      if (lv.base) { const dis=new Set(state.disabledEdges); if(houseEdge!=null) dis.add(houseEdge);
+        opts = { disabled: dis, openingFor: openingForEdge }; }
+      else opts = { disabled: new Set(), openingFor: () => null };
       buildPerimeterRailing(worldGroup, lv.poly, lv.topY, state, opts);
     }
     topY = lv.topY;
@@ -499,7 +502,7 @@ function rebuildScene() {
   if (state.stairsEdge != null && si >= STEP_INDEX.stairs)
     buildStairs(worldGroup, lv0.poly, state.stairsEdge, lv0.topY, plankMat, stairBoardMat, stairRiserMat, woodMat, state.stairPlatform);
   if (state.wallOn && si >= STEP_INDEX.walls)
-    buildWall(worldGroup, lv0.poly, lv0.topY);
+    buildHouse(worldGroup, lv0.poly, lv0.topY);
   if (si >= STEP_INDEX.furniture)
     buildFurniture(worldGroup, lv0.poly, lv0.topY);
 
@@ -592,39 +595,69 @@ function makeBrickTexture(hex) {
   for (let r=0,row=0;r<128;r+=18,row++){ for (let x=(row%2?-18:0);x<128;x+=38){ ctx.fillRect(x+2,r+2,34,14); } }
   const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
 }
-export function buildWall(parent, poly, deckTopY) {
+/* auto-built two-story (~2500 sq ft) home attached to the deck's house-side edge */
+export function buildHouse(parent, poly, deckTopY) {
   const bi = (state.wallEdge!=null && state.wallEdge<poly.length) ? state.wallEdge : backEdge(poly);
   const a=poly[bi], b=poly[(bi+1)%poly.length];
   const ax=a[0]*FT,az=a[1]*FT,bx=b[0]*FT,bz=b[1]*FT;
   const mx=(ax+bx)/2,mz=(az+bz)/2,L=Math.hypot(bx-ax,bz-az),A=Math.atan2(bz-az,bx-ax);
-  const C=centroid(poly), cx=C[0]*FT, cz=C[1]*FT, thick=0.3*FT, H=deckTopY+9*FT;
-  const off = state.wallMode==="detached" ? 1.5*FT : 0;
+  const C=centroid(poly), cx=C[0]*FT, cz=C[1]*FT;
 
   const g=new THREE.Group(); g.position.set(mx,0,mz); g.rotation.y=-A;
-  // which local-z is outward (away from deck) — wall sits there, faces the deck
+  // make local +z point outward (away from deck); the house extends into the yard
   const w=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0), g.rotation.y);
-  const outward = ((mx+w.x-cx)**2+(mz+w.z-cz)**2) > ((mx-cx)**2+(mz-cz)**2) ? 1 : -1;
-  const slabZ = outward*(thick/2+off), faceZ = slabZ - outward*(thick/2+0.02);
+  if (((mx+w.x-cx)**2+(mz+w.z-cz)**2) < ((mx-cx)**2+(mz-cz)**2)) g.rotation.y=-A+Math.PI;
+
+  // ~2500 sq ft over two floors: footprint ~ houseW x houseD (ft) ≈ 1250 sq ft each
+  const houseW=Math.max(L+2.4, 13.7);            // along the edge (world); ≥ ~45 ft / deck width
+  const houseD=8.4;                              // depth into yard (~28 ft)
+  const floorH=3.05, floors=2, bodyH=floorH*floors;
+  const fz=-0.04;                                // deck-facing facade plane (local z≈0, toward deck)
 
   const cl=CLADDING[state.cladding];
   const tex=cl.brick?makeBrickTexture(cl.base):makeSidingTexture(cl.base);
-  tex.repeat.set(Math.max(3,Math.round(L)), Math.max(4,Math.round(H*1.4)));
-  const cladMat=new THREE.MeshStandardMaterial({ map:tex, roughness:0.92, side:THREE.DoubleSide });
-  const slab=new THREE.Mesh(new THREE.BoxGeometry(L+0.2,H,thick), cladMat);
-  slab.position.set(0,H/2,slabZ); slab.castShadow=true; slab.receiveShadow=true; g.add(slab);
+  tex.repeat.set(Math.max(5,Math.round(houseW)), Math.max(5,Math.round(bodyH*1.5)));
+  const sideMat=new THREE.MeshStandardMaterial({ map:tex, roughness:0.93, side:THREE.DoubleSide });
+  const trimMat=new THREE.MeshStandardMaterial({ color:0xf0ece0, roughness:0.7 });
+  const roofMat=new THREE.MeshStandardMaterial({ color:0x474038, roughness:0.95 });
+  const glass=new THREE.MeshStandardMaterial({ color:0xbcd6e0, transparent:true, opacity:0.55, roughness:0.05, metalness:0.1 });
+  const door=new THREE.MeshStandardMaterial({ color:0x9fb6c4, transparent:true, opacity:0.5, roughness:0.05, metalness:0.1 });
+  const frame=new THREE.MeshStandardMaterial({ color:0xf2f2ee, roughness:0.6 });
 
-  const doorMat=new THREE.MeshStandardMaterial({ color:0x5a4633, roughness:0.7 });
-  const glassMat=new THREE.MeshStandardMaterial({ color:0xbcd6e0, transparent:true, opacity:0.55, roughness:0.05, metalness:0.1 });
-  const frameMat=new THREE.MeshStandardMaterial({ color:0xf0f0ec, roughness:0.6 });
-  const place=(n, w0,h0, yBase, mat, frame)=>{
-    for (let i=0;i<n;i++){
-      const x=L*((i+1)/(n+1)) - L/2;
-      if (frame) { const f=new THREE.Mesh(new THREE.BoxGeometry(w0+0.12,h0+0.12,0.04),frameMat); f.position.set(x,yBase,faceZ); g.add(f); }
-      const m=new THREE.Mesh(new THREE.BoxGeometry(w0,h0,0.05),mat); m.position.set(x,yBase,faceZ+outward*0.005); g.add(m);
-    }
+  // body
+  const body=new THREE.Mesh(new THREE.BoxGeometry(houseW, bodyH, houseD), sideMat);
+  body.position.set(0, bodyH/2, houseD/2); body.castShadow=true; body.receiveShadow=true; g.add(body);
+  // floor-line trim band
+  const band=new THREE.Mesh(new THREE.BoxGeometry(houseW+0.06, 0.13, houseD+0.06), trimMat);
+  band.position.set(0, floorH, houseD/2); g.add(band);
+
+  // gable roof: two sloped panels + gable end walls
+  const roofH=2.0, eave=0.45, slope=Math.hypot(houseD/2+eave, roofH), ang=Math.atan2(roofH, houseD/2+eave);
+  for (const s of [1,-1]){
+    const r=new THREE.Mesh(new THREE.BoxGeometry(houseW+2*eave, 0.12, slope), roofMat);
+    r.position.set(0, bodyH+roofH/2, houseD/2 + s*((houseD/2+eave)/2));
+    r.rotation.x = -s*ang; r.castShadow=true; g.add(r);
+  }
+  const tri=new THREE.Shape(); tri.moveTo(-houseW/2,0); tri.lineTo(houseW/2,0); tri.lineTo(0,roofH); tri.closePath();
+  for (const zz of [0.03, houseD-0.03]){
+    const gm=new THREE.Mesh(new THREE.ShapeGeometry(tri), sideMat);
+    gm.position.set(0, bodyH, zz); if (zz>0.5) gm.rotation.y=Math.PI; g.add(gm);
+  }
+
+  // deck-facing facade: sliding glass door at deck level + a window grid
+  const addPanel=(pw,ph,x,y,mat)=>{
+    const f=new THREE.Mesh(new THREE.BoxGeometry(pw+0.12,ph+0.12,0.04),frame); f.position.set(x,y,fz); g.add(f);
+    const m=new THREE.Mesh(new THREE.BoxGeometry(pw,ph,0.05),mat); m.position.set(x,y,fz-0.006); g.add(m);
   };
-  if (state.doors>0)   place(state.doors, 3*FT, 6.7*FT, deckTopY+6.7*FT/2, doorMat, true);
-  if (state.windows>0) place(state.windows, 3*FT, 3*FT, deckTopY+5.2*FT, glassMat, true);
+  const doorH=6.7*FT, doorW=1.7;
+  addPanel(doorW, doorH, 0, deckTopY + doorH/2, door);             // sliding door onto the deck
+  const cols=Math.max(2, Math.round(houseW/2.6));
+  const yG=deckTopY + floorH*0.5, yU=floorH + floorH*0.52;
+  for (let i=0;i<cols;i++){
+    const x=-houseW/2 + houseW*(i+0.5)/cols;
+    if (Math.abs(x) > doorW/2 + 0.7) addPanel(0.95, 1.0, x, yG, glass);  // ground-floor windows (clear of the door)
+    addPanel(0.95, 1.1, x, yU, glass);                                   // second-floor windows
+  }
   parent.add(g);
 }
 
@@ -965,9 +998,6 @@ function buildStaticUI() {
   document.getElementById("stairBoardOptions").innerHTML = swatchRow(STAIR_COLORS,"stairBoard");
   document.getElementById("stairRiserOptions").innerHTML = swatchRow(STAIR_COLORS,"stairRiser");
   document.getElementById("claddingOptions").innerHTML = swatchRow(CLADDING,"cladding");
-  document.getElementById("wallModeOptions").innerHTML =
-    `<button class="opt" data-key="wallMode" data-val="attached">Attached to wall</button>`+
-    `<button class="opt" data-key="wallMode" data-val="detached">Detached from wall</button>`;
   document.getElementById("furnitureOptions").innerHTML = Object.entries(FURNITURE).map(([k,v])=>
     `<button class="opt" data-furn="${k}">${v.name}</button>`).join("");
 }
@@ -1006,10 +1036,8 @@ function renderUI() {
   gb.textContent = state.gate ? "✓ Gate added" : "⊏ Add a gate"; gb.classList.toggle("active", state.gate);
 
   const wt=document.getElementById("wallToggleBtn"), wm=document.getElementById("wallMoveBtn");
-  wt.textContent = state.wallOn ? "✓ Wall added" : "＋ Add a wall"; wt.classList.toggle("active", state.wallOn);
+  wt.textContent = state.wallOn ? "✓ House added" : "＋ Add attached house"; wt.classList.toggle("active", state.wallOn);
   wm.hidden = !state.wallOn;
-  document.getElementById("doorCount").textContent = state.doors;
-  document.getElementById("winCount").textContent = state.windows;
   document.getElementById("nightBtn").classList.toggle("active", state.night);
   document.getElementById("nightCtl").hidden=!state.night;
   const syncB=(id,valId,v)=>{ const el=document.getElementById(id); if(+el.value!==v) el.value=v; document.getElementById(valId).textContent=(+v).toFixed(2); };
@@ -1046,8 +1074,7 @@ function renderSummary() {
     ["Gate", state.gate?"Yes":"No"],
   );
   if (si>=STEP_INDEX.walls && state.wallOn) rows.push(
-    ["Wall", CLADDING[state.cladding].name],
-    ["Doors / Windows", `${state.doors} / ${state.windows}`],
+    ["Attached home", `2-story · ${CLADDING[state.cladding].name} siding`],
   );
   if (si>=STEP_INDEX.furniture) {
     const fl=Object.keys(state.furniture).filter(k=>state.furniture[k]).length;
@@ -1158,11 +1185,6 @@ function registerEvents() {
 
   document.getElementById("platformBtn").addEventListener("click", ()=>commit(()=>state.stairPlatform=!state.stairPlatform));
   document.getElementById("wallToggleBtn").addEventListener("click", ()=>commit(()=>state.wallOn=!state.wallOn));
-  const clampDW=(k,d,max)=>commit(()=>state[k]=Math.max(0,Math.min(max,state[k]+d)));
-  document.getElementById("doorPlus").addEventListener("click", ()=>clampDW("doors",1,4));
-  document.getElementById("doorMinus").addEventListener("click", ()=>clampDW("doors",-1,4));
-  document.getElementById("winPlus").addEventListener("click", ()=>clampDW("windows",1,6));
-  document.getElementById("winMinus").addEventListener("click", ()=>clampDW("windows",-1,6));
 
   document.getElementById("addLevelBtn").addEventListener("click", ()=>commit(()=>{ state.levels.push({ shape: state.levels[0].shape }); pendingRefit=true; }));
   document.getElementById("removeLevelBtn").addEventListener("click", ()=>commit(()=>{ state.levels.length=1; pendingRefit=true; }));

@@ -28,7 +28,7 @@ scroll to zoom — with real lighting, soft shadows, and **Undo/Redo**.
 - **Post caps** — Standard, Ornamental (pyramid), Ball, Halo (LV) and Solar — the lighted caps glow (emissive)
 - **Height slider** — 1'–8' elevation with a live feet/inches readout, plus **Undo/Redo**
 - **Stairs** — staircase (treads, risers, stringers) descending from any deck edge; move it around the perimeter; optional landing **platform**; step-board & riser color pickers
-- **Walls** — attached/detached house wall with cladding (Red/Blue/Green/White/Brown/Yellow/Gray/Belmont brick) and adjustable **door**/**window** counts
+- **Attached home** — auto-builds a two-story (~2500 sq ft) house with a gable roof, floor-line trim, a window grid and a sliding glass door at deck level; choose the siding/cladding (Red/Blue/Green/White/Brown/Yellow/Gray/Belmont brick) and which deck edge it attaches to (the railing opens there automatically)
 - **Furniture** — table & chairs, lounge, planter, grill, umbrella; **drag any item in the 3D view to reposition it**
 - **Wall edge** — click a deck edge (or Move wall) to choose which side the house wall sits on
 - **Night mode** — 🌙 toggle dims the scene and the Solar/Halo caps cast real warm point-light pools, with a bloom glow you tune live via the **Glow** slider (WebGL2)
